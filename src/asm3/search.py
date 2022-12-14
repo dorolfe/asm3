@@ -31,6 +31,8 @@ def search(dbo, session, q):
     la:term     Only search lost animals for term
     li:num      Only search licence numbers for term
     fa:term     Only search found animals for term
+    lo:term     Only search logs for term
+    vo:term     Only search voucher codes for term
     wl:term     Only search waiting list entries for term
 
     sort:az     Sort results alphabetically az
@@ -43,7 +45,7 @@ def search(dbo, session, q):
     onshelter/os, notforadoption, hold, holdtoday, quarantine, deceased, 
     forpublish, people, vets, retailers, staff, fosterers, volunteers, 
     shelters, aco, banned, homechecked, homecheckers, members, donors, drivers,
-    reservenohomecheck, notmicrochipped
+    reservenohomecheck, nevervacc, norabies, notmicrochipped, unsigned, signed
 
     returns a tuple of:
     results, timetaken, explain, sortname
@@ -118,6 +120,7 @@ def search(dbo, session, q):
     searchsort = asm3.configuration.search_sort(dbo)
 
     q = q.replace("'", "`")
+    q = asm3.utils.truncate(q, 30) # limit search queries to 30 chars
 
     # Allow the sort to be overridden
     if q.find("sort:") != -1:
@@ -153,6 +156,8 @@ def search(dbo, session, q):
     lasort = ""
     lisort = ""
     fasort = ""
+    vosort = ""
+    losort = ""
     sortdir = "a"
     sortname = ""
     # alphanumeric ascending
@@ -164,6 +169,8 @@ def search(dbo, session, q):
         lasort = "OWNERNAME"
         lisort = "OWNERNAME"
         fasort = "OWNERNAME"
+        vosort = "OWNERNAME"
+        losort = "RECORDDETAIL"
         sortdir = "a"
         sortname = _("Alphabetically A-Z", l)
     # alphanumeric descending
@@ -175,6 +182,8 @@ def search(dbo, session, q):
         lasort = "OWNERNAME"
         lisort = "OWNERNAME"
         fasort = "OWNERNAME"
+        vosort = "OWNERNAME"
+        losort = "RECORDDETAIL"
         sortdir = "d"
         sortname = _("Alphabetically Z-A", l)
     # last changed ascending
@@ -186,6 +195,8 @@ def search(dbo, session, q):
         lasort = "LASTCHANGEDDATE"
         lisort = "ISSUEDATE"
         fasort = "LASTCHANGEDDATE"
+        vosort = "DATEISSUED"
+        losort = "LASTCHANGEDDATE"
         sortdir = "a"
         sortname = _("Least recently changed", l)
     # last changed descending
@@ -197,6 +208,8 @@ def search(dbo, session, q):
         lasort = "LASTCHANGEDDATE"
         lisort = "ISSUEDATE"
         fasort = "LASTCHANGEDDATE"
+        vosort = "DATEISSUED"
+        losort = "LASTCHANGEDDATE"
         sortdir = "d"
         sortname = _("Most recently changed", l)
     # species ascending
@@ -208,6 +221,8 @@ def search(dbo, session, q):
         lasort = "SPECIESNAME"
         lisort = "COMMENTS"
         fasort = "SPECIESNAME"
+        vosort = "COMMENTS"
+        losort = "RECORDDETAIL"
         sortdir = "a"
         sortname = _("Species A-Z", l)
     elif searchsort == 5:
@@ -218,6 +233,8 @@ def search(dbo, session, q):
         lasort = "SPECIESNAME"
         lisort = "COMMENTS"
         fasort = "SPECIESNAME"
+        vosort = "COMMENTS"
+        losort = "RECORDDETAIL"
         sortdir = "d"
         sortname = _("Species Z-A", l)
     elif searchsort == 6:
@@ -228,6 +245,8 @@ def search(dbo, session, q):
         lasort = "RELEVANCE"
         lisort = "RELEVANCE"
         fasort = "RELEVANCE"
+        vosort = "RELEVANCE"
+        losort = "RELEVANCE"
         sortdir = "d"
         sortname = _("Most relevant", l)
 
@@ -256,10 +275,20 @@ def search(dbo, session, q):
         if viewanimal:
             ar(asm3.animal.get_animals_long_term(dbo), "ANIMAL", animalsort)
 
+    elif q == "nevervacc":
+        explain = _("All animals who do not have a vaccination of any type", l)
+        if viewanimal:
+            ar(asm3.animal.get_animals_never_vacc(dbo), "ANIMAL", animalsort)
+
     elif q == "notmicrochipped":
         explain = _("All animals who have not been microchipped", l)
         if viewanimal:
             ar(asm3.animal.get_animals_not_microchipped(dbo), "ANIMAL", animalsort)
+
+    elif q == "norabies":
+        explain = _("All animals who have not received a rabies vaccination", l)
+        if viewanimal:
+            ar(asm3.animal.get_animals_no_rabies(dbo), "ANIMAL", animalsort)
 
     elif q == "hold":
         explain = _("All animals who are currently held in case of reclaim.", l)
@@ -287,73 +316,73 @@ def search(dbo, session, q):
             ar(asm3.publishers.base.get_animal_data(dbo), "ANIMAL", animalsort)
 
     elif q == "people":
-        ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="all", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+        ar(asm3.person.get_person_find_simple(dbo, "", classfilter="all", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
         explain = _("All people on file.", l)
 
     elif q == "vets":
         explain = _("All vets on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="vet", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="vet", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "retailers":
         explain = _("All retailers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="retailer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="retailer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "staff":
         explain = _("All staff on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="staff", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="staff", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "fosterers":
         explain = _("All fosterers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="fosterer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="fosterer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "volunteers":
         explain = _("All volunteers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="volunteer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="volunteer", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "shelters":
         explain = _("All animal shelters on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="shelter", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="shelter", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "aco":
         explain = _("All animal care officers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="aco", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="aco", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "banned":
         explain = _("All banned owners on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="banned", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="banned", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "homechecked":
         explain = _("All homechecked owners on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="homechecked", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="homechecked", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "homecheckers":
         explain = _("All homecheckers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="homechecker", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="homechecker", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "members":
         explain = _("All members on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="member", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="member", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "donors":
         explain = _("All donors on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="donor", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="donor", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "drivers":
         explain = _("All drivers on file.", l)
         if viewperson:
-            ar(asm3.person.get_person_find_simple(dbo, "", user, classfilter="driver", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
+            ar(asm3.person.get_person_find_simple(dbo, "", classfilter="driver", includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort)
 
     elif q == "reservenohomecheck":
         explain = _("People with active reservations, but no homecheck has been done.", l)
@@ -364,6 +393,23 @@ def search(dbo, session, q):
         explain = _("People with overdue donations.", l)
         if viewperson:
             ar(asm3.person.get_overdue_donations(dbo), "PERSON", personsort)
+
+    elif q == "signed":
+        explain = _("Document signing requests received in the last week", l)
+        if viewperson:
+            ar(asm3.person.get_signed_requests(dbo, 7), "PERSON", personsort)
+            ar(asm3.animal.get_signed_requests(dbo, 7), "ANIMAL", animalsort)
+
+    elif q == "unsigned":
+        explain = _("Document signing requests issued in the last month that are unsigned", l)
+        if viewperson:
+            ar(asm3.person.get_unsigned_requests(dbo, 31), "PERSON", personsort)
+            ar(asm3.animal.get_unsigned_requests(dbo, 31), "ANIMAL", animalsort)
+
+    elif q == "opencheckout":
+        explain = _("Adoption checkout requests issued in the last week that are still open", l)
+        if viewperson:
+            ar(asm3.person.get_open_adoption_checkout(dbo, 7), "PERSON", personsort)
 
     elif q == "activelost":
         explain = _("Lost animals reported in the last 30 days.", l)
@@ -391,7 +437,7 @@ def search(dbo, session, q):
         q = q[q.find(":")+1:].strip()
         explain = _("People matching '{0}'.", l).format(q)
         if viewperson:
-            ar( asm3.person.get_person_find_simple(dbo, q, user, includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort )
+            ar( asm3.person.get_person_find_simple(dbo, q, includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort )
 
     elif q.startswith("wl:") or q.startswith("waitinglist:"):
         q = q[q.find(":")+1:].strip()
@@ -417,6 +463,18 @@ def search(dbo, session, q):
         if asm3.users.check_permission_bool(session, asm3.users.VIEW_LICENCE):
             ar( asm3.financial.get_licence_find_simple(dbo, q, limit), "LICENCE", lisort )
 
+    elif q.startswith("lo:") or q.startswith("log:"):
+        q = q[q.find(":")+1:].strip()
+        explain = _("Logs matching '{0}'.", l).format(q)
+        if asm3.users.check_permission_bool(session, asm3.users.VIEW_LOG):
+            ar( asm3.log.get_log_find_simple(dbo, q, limit), "LOG", losort )
+
+    elif q.startswith("vo:") or q.startswith("voucher:"):
+        q = q[q.find(":")+1:].strip()
+        explain = _("Voucher codes matching '{0}'.", l).format(q)
+        if asm3.users.check_permission_bool(session, asm3.users.VIEW_VOUCHER):
+            ar( asm3.financial.get_voucher_find_simple(dbo, q, limit), "VOUCHER", vosort )
+
     # No special tokens, search everything and collate
     else:
         if viewanimal:
@@ -424,7 +482,7 @@ def search(dbo, session, q):
         if asm3.users.check_permission_bool(session, asm3.users.VIEW_INCIDENT):
             ar( asm3.animalcontrol.get_animalcontrol_find_simple(dbo, q, user, limit=limit, siteid=siteid), "ANIMALCONTROL", acsort )
         if viewperson:
-            ar( asm3.person.get_person_find_simple(dbo, q, user, includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort )
+            ar( asm3.person.get_person_find_simple(dbo, q, includeStaff=viewstaff, includeVolunteers=viewvolunteer, limit=limit, siteid=siteid), "PERSON", personsort )
         if asm3.users.check_permission_bool(session, asm3.users.VIEW_WAITING_LIST):
             ar( asm3.waitinglist.get_waitinglist_find_simple(dbo, q, limit=limit, siteid=siteid), "WAITINGLIST", wlsort )
         if asm3.users.check_permission_bool(session, asm3.users.VIEW_LOST_ANIMAL):
@@ -433,13 +491,20 @@ def search(dbo, session, q):
             ar( asm3.lostfound.get_foundanimal_find_simple(dbo, q, limit=limit, siteid=siteid), "FOUNDANIMAL", fasort )
         if asm3.users.check_permission_bool(session, asm3.users.VIEW_LICENCE):
             ar( asm3.financial.get_licence_find_simple(dbo, q, limit), "LICENCE", lisort )
+        # This pollutes search results too much, only allow log search with explicit lo:
+        #if asm3.users.check_permission_bool(session, asm3.users.VIEW_LOG):
+        #    ar( asm3.log.get_log_find_simple(dbo, q, limit=100), "LOG", losort )
+        if asm3.users.check_permission_bool(session, asm3.users.VIEW_VOUCHER):
+            ar( asm3.financial.get_voucher_find_simple(dbo, q, limit), "VOUCHER", vosort)
         explain = _("Results for '{0}'.", l).format(q)
 
     # Apply the sort to the results
+    # We return a tuple to the sorted function which forces rows with None in the 
+    # SORTON key to the end (True, None) for None values, (False, value) for items
     if sortdir == "a":
-        sortresults = sorted(results, key=lambda k: k["SORTON"])
+        sortresults = sorted(results, key=lambda k: (k["SORTON"] is None, k["SORTON"]))
     else:
-        sortresults = sorted(results, reverse=True, key=lambda k: k["SORTON"])
+        sortresults = sorted(results, reverse=True, key=lambda k: (k["SORTON"] is not None, k["SORTON"]))
 
     # stop the clock
     timetaken = (time.time() - starttime)

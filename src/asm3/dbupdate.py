@@ -36,14 +36,18 @@ VERSIONS = (
     34002, 34003, 34004, 34005, 34006, 34007, 34008, 34009, 34010, 34011, 34012,
     34013, 34014, 34015, 34016, 34017, 34018, 34019, 34020, 34021, 34022, 34100,
     34101, 34102, 34103, 34104, 34105, 34106, 34107, 34108, 34109, 34110, 34111,
-    34112, 34200, 34201, 34202, 34203, 34204, 34300
+    34112, 34200, 34201, 34202, 34203, 34204, 34300, 34301, 34302, 34303, 34304,
+    34305, 34306, 34400, 34401, 34402, 34403, 34404, 34405, 34406, 34407, 34408,
+    34409, 34410, 34411, 34500, 34501, 34502, 34503, 34504, 34505, 34506, 34507,
+    34508, 34509, 34510, 34511, 34512, 34600, 34601, 34602, 34603, 34604, 34605,
+    34606, 34607, 34608
 )
 
 LATEST_VERSION = VERSIONS[-1]
 
 # All ASM3 tables
 TABLES = ( "accounts", "accountsrole", "accountstrx", "additional", "additionalfield",
-    "adoption", "animal", "animalcontrol", "animalcontrolanimal", "animalcontrolrole", "animalcost", 
+    "adoption", "animal", "animalcontrol", "animalcontrolanimal", "animalcontrolrole", "animalcost",
     "animaldiet", "animalfigures", "animalfiguresannual",  
     "animalfound", "animalcontrolanimal", "animallitter", "animallost", "animallostfoundmatch", 
     "animalmedical", "animalmedicaltreatment", "animalname", "animalpublished", 
@@ -51,10 +55,12 @@ TABLES = ( "accounts", "accountsrole", "accountstrx", "additional", "additionalf
     "basecolour", "breed", "citationtype", "clinicappointment", "clinicinvoiceitem", "configuration", 
     "costtype", "customreport", "customreportrole", "dbfs", "deathreason", "deletion", "diary", 
     "diarytaskdetail", "diarytaskhead", "diet", "donationpayment", "donationtype", 
-    "entryreason", "incidentcompleted", "incidenttype", "internallocation", "jurisdiction", "licencetype", "lkanimalflags", "lkcoattype", 
+    "entryreason", "event", "eventanimal", "incidentcompleted", "incidenttype", "internallocation", 
+    "jurisdiction", "licencetype", "lkanimalflags", "lkcoattype",
     "lkownerflags", "lksaccounttype", "lksclinicstatus", "lksdiarylink", "lksdonationfreq", "lksex", 
     "lksfieldlink", "lksfieldtype", "lksize", "lksloglink", "lksmedialink", "lksmediatype", "lksmovementtype", "lksposneg", "lksrotatype", 
-    "lksyesno", "lksynun", "lkurgency", "lkworktype", "log", "logtype", "media", "medicalprofile", "messages", "onlineform", 
+    "lksyesno", "lksynun", "lksynunk", "lkstransportstatus", "lkurgency", "lkworktype", 
+    "log", "logtype", "media", "medicalprofile", "messages", "onlineform", 
     "onlineformfield", "onlineformincoming", "owner", "ownercitation", "ownerdonation", "ownerinvestigation", 
     "ownerlicence", "ownerlookingfor", "ownerrota", "ownertraploan", "ownervoucher", "pickuplocation", "publishlog", 
     "reservationstatus", "role", "site", "species", "stocklevel", "stocklocation", "stockusage", "stockusagetype", 
@@ -80,22 +86,47 @@ TABLES_NO_ID_COLUMN = ( "accountsrole", "additional", "audittrail", "animalcontr
     "animalcontrolrole", "animallostfoundmatch", "animalpublished", "configuration", "customreportrole", 
     "deletion", "onlineformincoming", "ownerlookingfor", "userrole" )
 
+# Tables that contain data rather than lookups - used by reset_db
+# to determine which tables to delete data from
+TABLES_DATA = ( "accountsrole", "accountstrx", "additional", "adoption", 
+    "animal", "animalcontrol", "animalcontrolanimal","animalcontrolrole", 
+    "animallostfoundmatch", "animalpublished", 
+    "animalcost", "animaldiet", "animalfigures", "animalfiguresannual", 
+    "animalfound", "animallitter", "animallost", "animalmedical", "animalmedicaltreatment", "animalname",
+    "animaltest", "animaltransport", "animalvaccination", "animalwaitinglist", "audittrail", 
+    "clinicappointment", "clinicinvoiceitem", "deletion", "diary", "event", "eventanimal", 
+    "log", "ownerlookingfor", "publishlog", "media", "messages", "owner", "ownercitation", 
+    "ownerdonation", "ownerinvestigation", "ownerlicence", "ownerrota", "ownertraploan", "ownervoucher", 
+    "stocklevel", "stockusage" )
+
+# Tables that contain lookup data. used by dump with includeLookups
+TABLES_LOOKUP = ( "accounts", "additionalfield", "animaltype", "basecolour", "breed", "citationtype", 
+    "costtype", "deathreason", "diarytaskdetail", "diarytaskhead", "diet", "donationpayment", 
+    "donationtype", "entryreason", "incidentcompleted", "incidenttype", "internallocation", "jurisdiction", 
+    "licencetype", "lkanimalflags", "lkcoattype", "lkownerflags", "lksaccounttype", "lksclinicstatus", 
+    "lksdiarylink", "lksdonationfreq", "lksex", "lksfieldlink", "lksfieldtype", "lksize", "lksloglink", 
+    "lksmedialink", "lksmediatype", "lksmovementtype", "lksposneg", "lksrotatype", "lksyesno", "lksynun", 
+    "lksynunk", "lkstransportstatus", "lkurgency", "lkworktype", "logtype", "medicalprofile", 
+    "onlineform", "onlineformfield", "pickuplocation", "reservationstatus", "site", "species", 
+    "templatedocument", "templatehtml", "testtype", "testresult", "transporttype", "traptype", 
+    "vaccinationtype", "voucher" )
+
 VIEWS = ( "v_adoption", "v_animal", "v_animalcontrol", "v_animalfound", "v_animallost", 
-    "v_animalmedicaltreatment", "v_animaltest", "v_animalvaccination", "v_animalwaitinglist", 
-    "v_owner", "v_ownercitation", "v_ownerdonation", "v_ownerlicence", "v_ownertraploan", 
-    "v_ownervoucher" )
+    "v_animalmedicalcombined", "v_animalmedicaltreatment", "v_animaltest", "v_animalvaccination", 
+    "v_animalwaitinglist", "v_owner", "v_ownercitation", "v_ownerdonation", "v_ownerlicence", 
+    "v_ownertraploan", "v_ownervoucher" )
 
 def sql_structure(dbo):
     """
     Returns the SQL necessary to create the database for the type specified
     """
-    def table(name, fields, includechange = True):
+    def table(name, fields, includechange = True, changenullable = False):
         if includechange:
             cf = (fint("RecordVersion", True),
-                fstr("CreatedBy"),
-                fdate("CreatedDate"),
-                fstr("LastChangedBy"),
-                fdate("LastChangedDate"))
+                fstr("CreatedBy", changenullable),
+                fdate("CreatedDate", changenullable),
+                fstr("LastChangedBy", changenullable),
+                fdate("LastChangedDate", changenullable))
             return "%s;\n" % dbo.ddl_add_table(name, ",".join(fields + cf))
         return "%s;\n" % dbo.ddl_add_table(name, ",".join(fields))
     def index(name, table, fieldlist, unique = False, partial = False):
@@ -124,12 +155,10 @@ def sql_structure(dbo):
         fstr("Description"),
         fint("Archived", True),
         fint("AccountType"),
-        fint("CostTypeID", True),
-        fint("DonationTypeID", True) ))
+        fint("CostTypeID", True), # ASM2_COMPATIBILITY - replaced by costtype.AccountID
+        fint("DonationTypeID", True) )) # ASM2_COMPATIBILITY - replaced by donationtype.AccountID
     sql += index("accounts_Code", "accounts", "Code", False)
     sql += index("accounts_Archived", "accounts", "Archived")
-    sql += index("accounts_CostTypeID", "accounts", "CostTypeID")
-    sql += index("accounts_DonationTypeID", "accounts", "DonationTypeID")
  
     sql += table("accountsrole", (
         fint("AccountID"),
@@ -185,6 +214,7 @@ def sql_structure(dbo):
         fint("OwnerID", True),
         fint("RetailerID", True),
         fint("OriginalRetailerMovementID", True),
+        fint("EventID", True),
         fdate("MovementDate", True),
         fint("MovementType"),
         fdate("ReturnDate", True),
@@ -216,6 +246,7 @@ def sql_structure(dbo):
     sql += index("adoption_ReturnedReasonID", "adoption", "ReturnedReasonID")
     sql += index("adoption_ReturnedByOwnerID", "adoption", "ReturnedByOwnerID")
     sql += index("adoption_TrialEndDate", "adoption", "TrialEndDate")
+    sql += index("adoption_EventID", "adoption", "EventID")
 
     sql += table("animal", (
         fid(),
@@ -236,11 +267,9 @@ def sql_structure(dbo):
         fstr("ShelterCode"),
         fstr("ShortCode"),
         fstr("ExtraIDs", True),
-        # ASM2_COMPATIBILITY
         fint("UniqueCodeID", True),
-        fdate("SmartTagSentDate", True),
         fint("YearCodeID", True),
-        # ASM2_COMPATIBILITY
+        fdate("SmartTagSentDate", True), # ASM2_COMPATIBILITY
         fstr("AcceptanceNumber"),
         fdate("DateOfBirth"),
         fint("EstimatedDOB"),
@@ -273,8 +302,10 @@ def sql_structure(dbo):
         fint("Declawed"),
         flongstr("HiddenAnimalDetails"),
         flongstr("AnimalComments"),
+        flongstr("PopupWarning", True),
         fint("OwnersVetID"),
         fint("CurrentVetID"),
+        fint("OwnerID", True),
         fint("OriginalOwnerID"),
         fint("BroughtInByOwnerID"),
         fint("AdoptionCoordinatorID", True),
@@ -288,6 +319,7 @@ def sql_structure(dbo):
         fint("IsPickup", True),
         fint("PickupLocationID", True),
         fstr("PickupAddress", True),
+        fint("JurisdictionID", True),
         flongstr("HealthProblems"),
         fint("PutToSleep"),
         flongstr("PTSReason"),
@@ -313,6 +345,7 @@ def sql_structure(dbo):
         ffloat("Weight", True),
         fstr("RabiesTag", True),
         fint("Archived"),
+        fint("Adoptable", True),
         fint("ActiveMovementID"),
         fint("ActiveMovementType", True),
         fdate("ActiveMovementDate", True),
@@ -340,6 +373,7 @@ def sql_structure(dbo):
     sql += index("animal_ActiveMovementReturn", "animal", "ActiveMovementReturn")
     sql += index("animal_AcceptanceNumber", "animal", "AcceptanceNumber")
     sql += index("animal_ActiveMovementType", "animal", "ActiveMovementType")
+    sql += index("animal_Adoptable", "animal", "Adoptable")
     sql += index("animal_AdoptionCoordinatorID", "animal", "AdoptionCoordinatorID")
     sql += index("animal_AgeGroup", "animal", "AgeGroup")
     sql += index("animal_BaseColourID", "animal", "BaseColourID")
@@ -352,6 +386,7 @@ def sql_structure(dbo):
     sql += index("animal_CoatType", "animal", "CoatType")
     sql += index("animal_CreatedBy", "animal", "CreatedBy")
     sql += index("animal_CreatedDate", "animal", "CreatedDate")
+    sql += index("animal_OwnerID", "animal", "OwnerID")
     sql += index("animal_CurrentVetID", "animal", "CurrentVetID")
     sql += index("animal_DateBroughtIn", "animal", "DateBroughtIn")
     sql += index("animal_DeceasedDate", "animal", "DeceasedDate")
@@ -359,6 +394,7 @@ def sql_structure(dbo):
     sql += index("animal_EntryReasonID", "animal", "EntryReasonID")
     sql += index("animal_IdentichipNumber", "animal", "IdentichipNumber")
     sql += index("animal_Identichip2Number", "animal", "Identichip2Number")
+    sql += index("animal_JurisdictionID", "animal", "JurisdictionID")
     sql += index("animal_LastChangedDate", "animal", "LastChangedDate")
     sql += index("animal_MostRecentEntryDate", "animal", "MostRecentEntryDate")
     sql += index("animal_Neutered", "animal", "Neutered")
@@ -528,6 +564,7 @@ def sql_structure(dbo):
         flongstr("DistFeat", False),
         fstr("AreaFound"),
         fstr("AreaPostcode"),
+        fstr("MicrochipNumber", True),
         fint("OwnerID"),
         fdate("ReturnToOwnerDate", True),
         flongstr("Comments") ))
@@ -535,6 +572,7 @@ def sql_structure(dbo):
     sql += index("animalfound_AnimalTypeID", "animalfound", "AnimalTypeID")
     sql += index("animalfound_AreaFound", "animalfound", "AreaFound")
     sql += index("animalfound_AreaPostcode", "animalfound", "AreaPostcode")
+    sql += index("animalfound_MicrochipNumber", "animalfound", "MicrochipNumber")
 
     sql += table("animallitter", (
         fid(),
@@ -545,8 +583,7 @@ def sql_structure(dbo):
         fint("CachedAnimalsLeft"),
         fdate("InvalidDate", True),
         fint("NumberInLitter"),
-        flongstr("Comments"),
-        fint("RecordVersion", True)), False)
+        flongstr("Comments")), True, True)
 
     sql += table("animallost", (
         fid(),
@@ -561,12 +598,14 @@ def sql_structure(dbo):
         flongstr("DistFeat", False),
         fstr("AreaLost"),
         fstr("AreaPostcode"),
+        fstr("MicrochipNumber", True),
         fint("OwnerID"),
         flongstr("Comments") ))
     sql += index("animallost_DateFound", "animallost", "DateFound")
     sql += index("animallost_AnimalTypeID", "animallost", "AnimalTypeID")
     sql += index("animallost_AreaLost", "animallost", "AreaLost")
     sql += index("animallost_AreaPostcode", "animallost", "AreaPostcode")
+    sql += index("animallost_MicrochipNumber", "animallost", "MicrochipNumber")
 
     sql += table("animallostfoundmatch", (
         fint("AnimalLostID"),
@@ -580,6 +619,7 @@ def sql_structure(dbo):
         fint("LostSex", True),
         fint("LostSpeciesID", True),
         fint("LostBreedID", True),
+        fstr("LostMicrochipNumber", True),
         flongstr("LostFeatures", True),
         fint("LostBaseColourID", True),
         fdate("LostDate", True),
@@ -591,6 +631,7 @@ def sql_structure(dbo):
         fint("FoundSex", True),
         fint("FoundSpeciesID", True),
         fint("FoundBreedID", True),
+        fstr("FoundMicrochipNumber", True),
         flongstr("FoundFeatures", True),
         fint("FoundBaseColourID", True),
         fdate("FoundDate", True),
@@ -608,6 +649,7 @@ def sql_structure(dbo):
         fdate("StartDate"),
         fstr("Dosage", True),
         fint("Cost"),
+        fint("CostPerTreatment", True),
         fdate("CostPaidDate", True),
         fint("TimingRule"),
         fint("TimingRuleFrequency"),
@@ -721,6 +763,7 @@ def sql_structure(dbo):
         fdate("DateExpires", True),
         fstr("BatchNumber", True),
         fstr("Manufacturer", True),
+        fstr("RabiesTag", True),
         fint("Cost"),
         fdate("CostPaidDate", True),
         flongstr("Comments") ))
@@ -731,6 +774,7 @@ def sql_structure(dbo):
     sql += index("animalvaccination_GivenBy", "animalvaccination", "GivenBy")
     sql += index("animalvaccination_CostPaidDate", "animalvaccination", "CostPaidDate")
     sql += index("animalvaccination_Manufacturer", "animalvaccination", "Manufacturer")
+    sql += index("animalvaccination_RabiesTag", "animalvaccination", "RabiesTag")
 
     sql += table("animalwaitinglist", (
         fid(),
@@ -831,6 +875,7 @@ def sql_structure(dbo):
         fstr("CostTypeName"),
         fstr("CostTypeDescription", True),
         fint("DefaultCost", True),
+        fint("AccountID", True),
         fint("IsRetired", True) ), False)
 
     sql += table("customreport", (
@@ -844,7 +889,8 @@ def sql_structure(dbo):
         flongstr("HTMLBody", False),
         flongstr("Description"),
         fint("OmitHeaderFooter"),
-        fint("OmitCriteria") ))
+        fint("OmitCriteria"),
+        fint("Revision", True) ))
     sql += index("customreport_Title", "customreport", "Title")
 
     sql += table("customreportrole", (
@@ -919,6 +965,7 @@ def sql_structure(dbo):
         fstr("DonationName"),
         fstr("DonationDescription", True),
         fint("DefaultCost", True),
+        fint("AccountID", True),
         fint("IsVAT", True),
         fint("IsRetired", True) ), False)
 
@@ -933,6 +980,32 @@ def sql_structure(dbo):
         fstr("ReasonName"),
         fstr("ReasonDescription", True),
         fint("IsRetired", True) ), False)
+
+    sql += table("event", (
+        fid(),
+        fdate("StartDateTime"),
+        fdate("EndDateTime"),
+        fstr("EventName"),
+        flongstr("EventDescription", True),
+        fint("EventOwnerID", True),
+        flongstr("EventAddress", True),
+        fstr("EventTown", True),
+        fstr("EventCounty", True),
+        fstr("EventPostCode", True),
+        fstr("EventCountry", True) ))
+    sql += index("event_StartDateTime", "event", "StartDateTime")
+    sql += index("event_EndDateTime", "event", "EndDateTime")
+    sql += index("event_EventName", "event", "EventName")
+    sql += index("event_EventOwnerID", "event", "EventOwnerID")
+    sql += index("event_EventAddress", "event", "EventAddress")
+
+    sql += table("eventanimal", (
+        fid(),
+        fint("EventID"),
+        fint("AnimalID"),
+        fdate("ArrivalDate") ))
+    sql += index("eventanimal_EventAnimalID", "eventanimal", "EventID,AnimalID", True)
+    sql += index("eventanimal_ArrivalDate", "eventanimal", "ArrivalDate")
 
     sql += table("incidentcompleted", (
         fid(),
@@ -1013,7 +1086,11 @@ def sql_structure(dbo):
         fid(), fstr("LinkType") ), False)
 
     sql += table("lksrotatype", (
-        fid(), fstr("RotaType") ), False)
+        fid(), fstr("RotaType"),
+        fint("IsRetired", True) ), False)
+
+    sql += table("lkstransportstatus", (
+        fid(), fstr("Name") ), False)
 
     sql += table("lkurgency", ( 
         fid(), fstr("Urgency") ), False)
@@ -1024,11 +1101,15 @@ def sql_structure(dbo):
     sql += table("lksynun", (
         fid(), fstr("Name") ), False)
 
+    sql += table("lksynunk", (
+        fid(), fstr("Name") ), False)
+
     sql += table("lksposneg", (
         fid(), fstr("Name") ), False)
 
     sql += table("lkworktype", (
-        fid(), fstr("WorkType") ), False)
+        fid(), fstr("WorkType"),
+        fint("IsRetired", True) ), False)
 
     sql += table("log", (
         fid(),
@@ -1072,6 +1153,7 @@ def sql_structure(dbo):
         fint("LinkTypeID"),
         fint("RecordVersion", True),
         fdate("Date"),
+        fdate("CreatedDate", True),
         fdate("RetainUntil", True) ), False)
     sql += index("media_DBFSID", "media", "DBFSID")
     sql += index("media_MediaMimeType", "media", "MediaMimeType")
@@ -1080,6 +1162,7 @@ def sql_structure(dbo):
     sql += index("media_WebsitePhoto", "media", "WebsitePhoto")
     sql += index("media_WebsiteVideo", "media", "WebsiteVideo")
     sql += index("media_DocPhoto", "media", "DocPhoto")
+    sql += index("media_CreatedDate", "media", "CreatedDate")
     sql += index("media_Date", "media", "Date")
     sql += index("media_RetainUntil", "media", "RetainUntil")
 
@@ -1089,6 +1172,7 @@ def sql_structure(dbo):
         fstr("TreatmentName"),
         fstr("Dosage"),
         fint("Cost"),
+        fint("CostPerTreatment", True),
         fint("TimingRule"),
         fint("TimingRuleFrequency"),
         fint("TimingRuleNoFrequencies"),
@@ -1111,7 +1195,10 @@ def sql_structure(dbo):
         fstr("Name"),
         fstr("RedirectUrlAfterPOST", True),
         fstr("SetOwnerFlags", True),
+        fint("AutoProcess", True),
+        fint("RetainFor", True),
         fint("EmailSubmitter", True),
+        fint("EmailCoordinator", True),
         flongstr("EmailAddress", True),
         flongstr("EmailMessage", True),
         flongstr("Header", True),
@@ -1128,6 +1215,8 @@ def sql_structure(dbo):
         fint("Mandatory", True),
         fstr("Label"),
         flongstr("Lookups", True),
+        fint("SpeciesID", True),
+        fstr("VisibleIf", True),
         flongstr("Tooltip", True)), False)
     sql += index("onlineformfield_OnlineFormID", "onlineformfield", "OnlineFormID")
 
@@ -1169,13 +1258,16 @@ def sql_structure(dbo):
         fint("JurisdictionID", True),
         fint("IDCheck", True),
         flongstr("Comments", True),
+        flongstr("PopupWarning", True),
         fint("SiteID", True),
         fint("IsBanned", True),
+        fint("IsDangerous", True),
         fint("IsVolunteer", True),
         fint("IsHomeChecker", True),
         fint("IsMember", True),
         fdate("MembershipExpiryDate", True),
         fstr("MembershipNumber", True),
+        fint("IsAdopter", True),
         fint("IsAdoptionCoordinator", True),
         fint("IsDonor", True),
         fint("IsDriver", True),
@@ -1183,10 +1275,12 @@ def sql_structure(dbo):
         fint("IsACO", True), 
         fint("IsStaff", True),
         fint("IsFosterer", True),
+        fint("IsSponsor", True),
         fint("FosterCapacity", True),
         fint("IsRetailer", True),
         fint("IsVet", True),
         fint("IsGiftAid", True),
+        fstr("ExtraIDs", True),
         flongstr("AdditionalFlags", True),
         flongstr("HomeCheckAreas", True),
         fdate("DateLastHomeChecked", True),
@@ -1231,12 +1325,15 @@ def sql_structure(dbo):
     sql += index("owner_SiteID", "owner", "SiteID")
     sql += index("owner_IDCheck", "owner", "IDCheck")
     sql += index("owner_IsACO", "owner", "IsACO")
+    sql += index("owner_IsAdopter", "owner", "IsAdopter")
     sql += index("owner_IsAdoptionCoordinator", "owner", "IsAdoptionCoordinator")
     sql += index("owner_IsFosterer", "owner", "IsFosterer")
     sql += index("owner_IsRetailer", "owner", "IsRetailer")
     sql += index("owner_IsStaff", "owner", "IsStaff")
     sql += index("owner_IsVet", "owner", "IsVet")
     sql += index("owner_IsVolunteer", "owner", "IsVolunteer")
+    sql += index("owner_ExtraIDs", "owner", "ExtraIDs")
+    sql += index("owner_IsSponsor", "owner", "IsSponsor")
 
     sql += table("ownercitation", (
         fid(),
@@ -1261,7 +1358,9 @@ def sql_structure(dbo):
         fint("MovementID", True),
         fint("DonationTypeID"),
         fint("DonationPaymentID", True),
+        fstr("ReceiptNumber", True),
         fstr("ChequeNumber", True),
+        flongstr("PaymentProcessorData", True),
         fdate("Date", True),
         fdate("DateDue", True),
         fint("Donation"),
@@ -1274,7 +1373,6 @@ def sql_structure(dbo):
         fint("VATAmount", True),
         fint("Frequency"),
         fint("NextCreated", True),
-        fstr("ReceiptNumber", True),
         flongstr("Comments") ))
     sql += index("ownerdonation_OwnerID", "ownerdonation", "OwnerID")
     sql += index("ownerdonation_ReceiptNumber", "ownerdonation", "ReceiptNumber")
@@ -1349,13 +1447,19 @@ def sql_structure(dbo):
         fid(),
         fint("OwnerID"),
         fint("VoucherID"),
+        fint("AnimalID", True),
+        fstr("VoucherCode", True),
         fdate("DateIssued"),
         fdate("DateExpired"),
+        fdate("DatePresented", True),
         fint("Value"),
         flongstr("Comments", True) ))
+    sql += index("ownervoucher_AnimalID", "ownervoucher", "AnimalID")
     sql += index("ownervoucher_OwnerID", "ownervoucher", "OwnerID")
     sql += index("ownervoucher_VoucherID", "ownervoucher", "VoucherID")
+    sql += index("ownervoucher_VoucherCode", "ownervoucher", "VoucherCode")
     sql += index("ownervoucher_DateExpired", "ownervoucher", "DateExpired")
+    sql += index("ownervoucher_DatePresented", "ownervoucher", "DatePresented")
 
     sql += table("pickuplocation", (
         fid(),
@@ -1450,6 +1554,7 @@ def sql_structure(dbo):
         fid(),
         fstr("Name"),
         fstr("Path"),
+        fstr("ShowAt", True),
         flongstr("Content") ), False)
     sql += index("templatedocument_NamePath", "templatedocument", "Name,Path", True)
 
@@ -1467,6 +1572,7 @@ def sql_structure(dbo):
         fstr("TestName"),
         fstr("TestDescription", True),
         fint("DefaultCost", True),
+        fint("RescheduleDays", True),
         fint("IsRetired", True) ), False)
 
     sql += table("testresult", (
@@ -1494,6 +1600,8 @@ def sql_structure(dbo):
         fstr("RealName", True),
         fstr("EmailAddress", True),
         fstr("Password"),
+        fint("EnableTOTP", True),
+        fstr("OTPSecret", True),
         fint("SuperUser"),
         fint("OwnerID", True),
         flongstr("SecurityMap", True),
@@ -1523,6 +1631,7 @@ def sql_structure(dbo):
         fid(),
         fstr("VaccinationType"),
         fstr("VaccinationDescription", True),
+        fint("RescheduleDays", True),
         fint("DefaultCost", True),
         fint("IsRetired", True) ), False)
     return sql
@@ -1560,13 +1669,13 @@ def sql_default_data(dbo, skip_config = False):
     if not skip_config:
         sql += user(1, "user", "Default system user", "letmein", True)
         sql += user(2, "guest", "Default guest user", "guest", False)
-        sql += role(1, _("Other Organisation", l), "vac *va *vavet *vav *mvam *dvad *cvad *vamv *vo *volk *vle *vvov *vdn *vla *vfa *vwl *vcr *vll *")
-        sql += role(2, _("Staff", l), "aa *ca *va *vavet *cloa *gaf *aam *cam *dam *vam *mand *aav *vav *cav *dav *bcav *maam *mcam *mdam *mvam *bcam *daad *dcad *ddad *dvad *caad *cdad *cvad *aamv *camv *vamv *ao *co *vo *emo *mo *volk *ale *cle *dle *vle *vaov *vcov *vvov *oaod *ocod *odod *ovod *vdn *edt *adn *eadn *emdn *ecdn *bcn *ddn *pdn *pvd *ala *cla *vla *afa *cfa *vfa *mlaf *vwl *awl *cwl *bcwl *all *cll *vll *dll *excr *vcr *vvo *")
+        sql += role(1, _("Other Organisation", l), "vac *va *vavet *vav *mvam *dvad *cvad *vamv *vo *volk *vle *vvov *vdn *vla *vfa *vwl *vcr *vll *vof *")
+        sql += role(2, _("Staff", l), "aa *ca *va *ma *vavet *cloa *gaf *aam *cam *dam *vam *mand *aav *vav *cav *dav *bcav *maam *mcam *mdam *mvam *bcam *daad *dcad *ddad *dvad *caad *cdad *cvad *aamv *camv *vamv *ao *co *vo *emo *mo *volk *ale *cle *dle *vle *vaov *vcov *vvov *oaod *ocod *odod *ovod *vdn *edt *adn *eadn *emdn *ecdn *bcn *ddn *pdn *pvd *ala *cla *vla *afa *cfa *vfa *mlaf *vwl *awl *cwl *bcwl *all *cll *vll *dll *excr *vcr *vvo *vof *")
         sql += role(3, _("Accountant", l), "aac *vac *cac *ctrx *dac *vaov *vcov *vdov *vvov *oaod *ocod *odod *ovod *")
         sql += role(4, _("Vet", l), "va *vavet *aav *vav *cav *dav *bcav *maam *mcam *mdam *mvam *bcam *daad *dcad *ddad *dvad *")
-        sql += role(5, _("Publisher", l), "uipb *")
-        sql += role(6, _("System Admin", l), "asm *cso *cpo *maf *mdt *ml *usi *rdbu *rdbd *asu *esu *ccr *vcr *hcr *dcr *tbp *excr *")
-        sql += role(7, _("Marketer", l), "uipb *mmeo *emo *mmea *")
+        sql += role(5, _("Publisher", l), "uipb *aof *vof *eof *")
+        sql += role(6, _("System Admin", l), "asm *cso *cpo *maf *mdt *ml *usi *rdbu *rdbd *asu *esu *ccr *vcr *hcr *dcr *tbp *excr *eav *icv *")
+        sql += role(7, _("Marketer", l), "uipb *mmeo *emo *mmea *eof *vof *")
         sql += role(8, _("Investigator", l), "aoi *coi *doi *voi *")
         sql += role(9, _("Animal Control Officer", l), "aaci *caci *vaci *aacc *cacc *dacc *vacc *emo *")
         sql += "INSERT INTO userrole VALUES (2, 1)|=\n"
@@ -1597,8 +1706,10 @@ def sql_default_data(dbo, skip_config = False):
     sql += account(16, _("Expenses::Gas", l), _("Gas Bills", l), 4, 0, 0)
     sql += account(17, _("Expenses::Postage", l), _("Postage costs", l), 4, 0, 0)
     sql += account(18, _("Expenses::Stationary", l), _("Stationary costs", l), 4, 0, 0)
-    sql += account(19, _("Expenses::Food", l), _("Animal food costs"), 4, 0, 0)
-    sql += account(20, _("Expenses::Board", l), _("Animal board costs"), 4, 0, 1)
+    sql += account(19, _("Expenses::Food", l), _("Animal food costs", l), 4, 0, 0)
+    sql += account(20, _("Expenses::Board", l), _("Animal board costs", l), 4, 0, 1)
+    sql += account(21, _("Expenses::TransactionFee", l), _("Transaction fees", l), 4, 0, 0)
+    sql += account(22, _("Income::SalesTax", l), _("Sales Tax", l), 5, 0, 0)
     sql += lookup2("animaltype", "AnimalType", 2, _("D (Dog)", l))
     sql += lookup2("animaltype", "AnimalType", 10, _("A (Stray Dog)", l))
     sql += lookup2("animaltype", "AnimalType", 11, _("U (Unwanted Cat)", l))
@@ -1910,7 +2021,7 @@ def sql_default_data(dbo, skip_config = False):
     sql += breed(271, _("Egyptian Mau", l), "Egyptian Mau", 2)
     sql += breed(272, _("Exotic Shorthair", l), "Exotic Shorthair", 2)
     sql += breed(273, _("Extra-Toes Cat (Hemingway Polydactyl)", l), "Extra-Toes Cat (Hemingway Polydactyl)", 2)
-    sql += breed(274, _("Havana", l), "Havana", 2)
+    sql += breed(274, _("Havana", l), "Havana Brown", 2)
     sql += breed(275, _("Himalayan", l), "Himalayan", 2)
     sql += breed(276, _("Japanese Bobtail", l), "Japanese Bobtail", 2)
     sql += breed(277, _("Javanese", l), "Javanese", 2)
@@ -2087,6 +2198,7 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup2("donationpayment", "PaymentName", 3, _("Credit Card", l))
     sql += lookup2("donationpayment", "PaymentName", 4, _("Debit Card", l))
     sql += lookup2("donationpayment", "PaymentName", 5, _("PayPal", l))
+    sql += lookup2("donationpayment", "PaymentName", 6, _("Stripe", l))
     sql += lookup2money("donationtype", "DonationName", 1, _("Donation", l))
     sql += lookup2money("donationtype", "DonationName", 2, _("Adoption Fee", l))
     sql += lookup2money("donationtype", "DonationName", 3, _("Waiting List Donation", l))
@@ -2172,6 +2284,7 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksmovementtype", "MovementType", 10, _("Cancelled Reservation", l))
     sql += lookup1("lksmovementtype", "MovementType", 11, _("Trial Adoption", l))
     sql += lookup1("lksmovementtype", "MovementType", 12, _("Permanent Foster", l))
+    sql += lookup1("lksmovementtype", "MovementType", 13, _("TNR", l))
     sql += lookup1("lksmedialink", "LinkType", 0, _("Animal", l))
     sql += lookup1("lksmedialink", "LinkType", 1, _("Lost Animal", l))
     sql += lookup1("lksmedialink", "LinkType", 2, _("Found Animal", l))
@@ -2191,10 +2304,11 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksdiarylink", "LinkType", 7, _("Incident", l))
     sql += lookup1("lksdonationfreq", "Frequency", 0, _("One-Off", l))
     sql += lookup1("lksdonationfreq", "Frequency", 1, _("Weekly", l))
-    sql += lookup1("lksdonationfreq", "Frequency", 2, _("Monthly", l))
-    sql += lookup1("lksdonationfreq", "Frequency", 3, _("Quarterly", l))
-    sql += lookup1("lksdonationfreq", "Frequency", 4, _("Half-Yearly", l))
-    sql += lookup1("lksdonationfreq", "Frequency", 5, _("Annually", l))
+    sql += lookup1("lksdonationfreq", "Frequency", 2, _("Fortnightly", l))
+    sql += lookup1("lksdonationfreq", "Frequency", 3, _("Monthly", l))
+    sql += lookup1("lksdonationfreq", "Frequency", 4, _("Quarterly", l))
+    sql += lookup1("lksdonationfreq", "Frequency", 5, _("Half-Yearly", l))
+    sql += lookup1("lksdonationfreq", "Frequency", 6, _("Annually", l))
     sql += lookup1("lksfieldlink", "LinkType", 0, _("Animal - Additional", l))
     sql += lookup1("lksfieldlink", "LinkType", 2, _("Animal - Details", l))
     sql += lookup1("lksfieldlink", "LinkType", 3, _("Animal - Notes", l))
@@ -2216,6 +2330,7 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksfieldlink", "LinkType", 18, _("Incident - Owner", l))
     sql += lookup1("lksfieldlink", "LinkType", 19, _("Incident - Citation", l))
     sql += lookup1("lksfieldlink", "LinkType", 20, _("Incident - Additional", l))
+    sql += lookup1("lksfieldlink", "LinkType", 21, _("Event - Details", l))
     sql += lookup1("lksfieldtype", "FieldType", 0, _("Yes/No", l))
     sql += lookup1("lksfieldtype", "FieldType", 1, _("Text", l))
     sql += lookup1("lksfieldtype", "FieldType", 2, _("Notes", l))
@@ -2226,6 +2341,9 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksfieldtype", "FieldType", 7, _("Multi-Lookup", l))
     sql += lookup1("lksfieldtype", "FieldType", 8, _("Animal", l))
     sql += lookup1("lksfieldtype", "FieldType", 9, _("Person", l))
+    sql += lookup1("lksfieldtype", "FieldType", 10, _("Time", l))
+    sql += lookup1("lksfieldtype", "FieldType", 11, _("Sponsor", l))
+    sql += lookup1("lksfieldtype", "FieldType", 12, _("Vet"))
     sql += lookup1("lksloglink", "LinkType", 0, _("Animal", l))
     sql += lookup1("lksloglink", "LinkType", 1, _("Owner", l))
     sql += lookup1("lksloglink", "LinkType", 2, _("Lost Animal", l))
@@ -2238,6 +2356,12 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksynun", "Name", 0, _("Yes", l))
     sql += lookup1("lksynun", "Name", 1, _("No", l))
     sql += lookup1("lksynun", "Name", 2, _("Unknown", l))
+    sql += lookup1("lksynun", "Name", 3, _("Selective", l))
+    sql += lookup1("lksynunk", "Name", 0, _("Yes", l))
+    sql += lookup1("lksynunk", "Name", 1, _("No", l))
+    sql += lookup1("lksynunk", "Name", 2, _("Unknown", l))
+    sql += lookup1("lksynunk", "Name", 5, _("Over 5", l))
+    sql += lookup1("lksynunk", "Name", 12, _("Over 12", l))
     sql += lookup1("lksposneg", "Name", 0, _("Unknown", l))
     sql += lookup1("lksposneg", "Name", 1, _("Negative", l))
     sql += lookup1("lksposneg", "Name", 2, _("Positive", l))
@@ -2252,6 +2376,12 @@ def sql_default_data(dbo, skip_config = False):
     sql += lookup1("lksrotatype", "RotaType", 17, _("Sick leave", l))
     sql += lookup1("lksrotatype", "RotaType", 18, _("Training", l))
     sql += lookup1("lksrotatype", "RotaType", 19, _("Unavailable", l))
+    sql += lookup1("lkstransportstatus", "Name", 1, _("New", l))
+    sql += lookup1("lkstransportstatus", "Name", 2, _("Confirmed", l))
+    sql += lookup1("lkstransportstatus", "Name", 3, _("Hold", l))
+    sql += lookup1("lkstransportstatus", "Name", 4, _("Scheduled", l))
+    sql += lookup1("lkstransportstatus", "Name", 10, _("Cancelled", l))
+    sql += lookup1("lkstransportstatus", "Name", 11, _("Completed", l))
     sql += lookup1("lkurgency", "Urgency", 1, _("Urgent", l))
     sql += lookup1("lkurgency", "Urgency", 2, _("High", l))
     sql += lookup1("lkurgency", "Urgency", 3, _("Medium", l))
@@ -2350,7 +2480,6 @@ def install_db_structure(dbo):
     sql = sql_structure(dbo)
     for s in sql.split(";"):
         if (s.strip() != ""):
-            print(s.strip())
             dbo.execute_dbupdate(s.strip())
 
 def install_db_views(dbo):
@@ -2372,6 +2501,7 @@ def install_db_views(dbo):
     create_view("v_animalfound", asm3.lostfound.get_foundanimal_query(dbo))
     create_view("v_animallost", asm3.lostfound.get_lostanimal_query(dbo))
     create_view("v_animalmedicaltreatment", asm3.medical.get_medicaltreatment_query(dbo))
+    create_view("v_animalmedicalcombined", asm3.medical.get_medicalcombined_query(dbo))
     create_view("v_animaltest", asm3.medical.get_test_query(dbo))
     create_view("v_animalvaccination", asm3.medical.get_vaccination_query(dbo))
     create_view("v_animalwaitinglist", asm3.waitinglist.get_waitinglist_query(dbo))
@@ -2407,7 +2537,6 @@ def install_default_data(dbo, skip_config = False):
     sql = sql_default_data(dbo, skip_config)
     for s in sql.split("|="):
         if s.strip() != "":
-            print(s.strip())
             dbo.execute_dbupdate(s.strip())
 
 def reinstall_default_data(dbo):
@@ -2417,7 +2546,6 @@ def reinstall_default_data(dbo):
     """
     for table in TABLES:
         if table != "dbfs" and table != "configuration" and table != "users" and table != "role" and table != "userrole":
-            print("DELETE FROM %s" % table)
             dbo.execute_dbupdate("DELETE FROM %s" % table)
     install_default_data(dbo, True)
     install_default_templates(dbo)
@@ -2444,10 +2572,11 @@ def install_default_templates(dbo, removeFirst = False):
     """
     Installs the default templates files into the db
     """
-    def add_document_template_from_file(name, path, filename):
+    def add_document_template_from_file(show, name, path, filename):
         dbo.insert("templatedocument", {
             "Name":     name,
             "Path":     path,
+            "ShowAt":   show,
             "Content":  asm3.utils.base64encode( asm3.utils.read_binary_file(filename) )
         })
     def add_html_template(name, head, body, foot, builtin):
@@ -2476,35 +2605,35 @@ def install_default_templates(dbo, removeFirst = False):
     add_html_template_from_files("responsive")
     add_html_template_from_files("plain")
     add_html_template_from_files("rss")
-    add_document_template_from_file("adoption_form.html", "/templates", path + "media/templates/adoption_form.html")
-    add_document_template_from_file("cat_assessment_form.html", "/templates", path + "media/templates/cat_assessment_form.html")
-    add_document_template_from_file("cat_cage_card.html", "/templates", path + "media/templates/cat_cage_card.html")
-    add_document_template_from_file("cat_information.html", "/templates", path + "media/templates/cat_information.html")
-    add_document_template_from_file("dog_assessment_form.html", "/templates", path + "media/templates/dog_assessment_form.html")
-    add_document_template_from_file("dog_cage_card.html", "/templates", path + "media/templates/dog_cage_card.html")
-    add_document_template_from_file("dog_information.html", "/templates", path + "media/templates/dog_information.html")
-    add_document_template_from_file("dog_license.html", "/templates", path + "media/templates/dog_license.html")
-    add_document_template_from_file("fancy_cage_card.html", "/templates", path + "media/templates/fancy_cage_card.html")
-    add_document_template_from_file("half_a4_cage_card.html", "/templates", path + "media/templates/half_a4_cage_card.html")
-    add_document_template_from_file("homecheck_form.html", "/templates", path + "media/templates/homecheck_form.html")
-    add_document_template_from_file("incident_information.html", "/templates", path + "media/templates/incident_information.html")
-    add_document_template_from_file("invoice.html", "/templates", path + "media/templates/invoice.html")
-    add_document_template_from_file("microchip_form.html", "/templates", path + "media/templates/microchip_form.html")
-    add_document_template_from_file("petplan.html", "/templates", path + "media/templates/petplan.html")
-    add_document_template_from_file("rabies_certificate.html", "/templates", path + "media/templates/rabies_certificate.html")
-    add_document_template_from_file("receipt.html", "/templates", path + "media/templates/receipt.html")
-    add_document_template_from_file("receipt_tax.html", "/templates", path + "media/templates/receipt_tax.html")
-    add_document_template_from_file("reclaim_release.html", "/templates", path + "media/templates/reclaim_release.html")
-    add_document_template_from_file("reserved.html", "/templates", path + "media/templates/reserved.html")
-    add_document_template_from_file("spay_neuter_voucher.html", "/templates", path + "media/templates/spay_neuter_voucher.html")
-    add_document_template_from_file("rspca_adoption.html", "/templates/rspca", path + "media/templates/rspca/rspca_adoption.html")
-    add_document_template_from_file("rspca_behaviour_observations_cat.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_cat.html")
-    add_document_template_from_file("rspca_behaviour_observations_dog.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_dog.html")
-    add_document_template_from_file("rspca_behaviour_observations_rabbit.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_rabbit.html")
-    add_document_template_from_file("rspca_dog_advice_leaflet.html", "/templates/rspca", path + "media/templates/rspca/rspca_dog_advice_leaflet.html")
-    add_document_template_from_file("rspca_post_home_visit.html", "/templates/rspca", path + "media/templates/rspca/rspca_post_home_visit.html")
-    add_document_template_from_file("rspca_transfer_of_ownership.html", "/templates/rspca", path + "media/templates/rspca/rspca_transfer_of_ownership.html")
-    add_document_template_from_file("rspca_transfer_of_title.html", "/templates/rspca", path + "media/templates/rspca/rspca_transfer_of_title.html")
+    add_document_template_from_file("animal,movement", "adoption_form.html", "/templates", path + "media/templates/adoption_form.html")
+    add_document_template_from_file("animal", "cat_assessment_form.html", "/templates", path + "media/templates/cat_assessment_form.html")
+    add_document_template_from_file("animal", "cat_cage_card.html", "/templates", path + "media/templates/cat_cage_card.html")
+    add_document_template_from_file("animal", "cat_information.html", "/templates", path + "media/templates/cat_information.html")
+    add_document_template_from_file("animal", "dog_assessment_form.html", "/templates", path + "media/templates/dog_assessment_form.html")
+    add_document_template_from_file("animal", "dog_cage_card.html", "/templates", path + "media/templates/dog_cage_card.html")
+    add_document_template_from_file("animal", "dog_information.html", "/templates", path + "media/templates/dog_information.html")
+    add_document_template_from_file("licence", "dog_license.html", "/templates", path + "media/templates/dog_license.html")
+    add_document_template_from_file("animal", "fancy_cage_card.html", "/templates", path + "media/templates/fancy_cage_card.html")
+    add_document_template_from_file("animal", "half_a4_cage_card.html", "/templates", path + "media/templates/half_a4_cage_card.html")
+    add_document_template_from_file("movement", "homecheck_form.html", "/templates", path + "media/templates/homecheck_form.html")
+    add_document_template_from_file("incident", "incident_information.html", "/templates", path + "media/templates/incident_information.html")
+    add_document_template_from_file("payment", "invoice.html", "/templates", path + "media/templates/invoice.html")
+    add_document_template_from_file("animal,movement", "microchip_form.html", "/templates", path + "media/templates/microchip_form.html")
+    add_document_template_from_file("animal,movement", "petplan.html", "/templates", path + "media/templates/petplan.html")
+    add_document_template_from_file("animal,movement", "rabies_certificate.html", "/templates", path + "media/templates/rabies_certificate.html")
+    add_document_template_from_file("payment", "receipt.html", "/templates", path + "media/templates/receipt.html")
+    add_document_template_from_file("payment", "receipt_tax.html", "/templates", path + "media/templates/receipt_tax.html")
+    add_document_template_from_file("movement", "reclaim_release.html", "/templates", path + "media/templates/reclaim_release.html")
+    add_document_template_from_file("movement", "reserved.html", "/templates", path + "media/templates/reserved.html")
+    add_document_template_from_file("voucher", "spay_neuter_voucher.html", "/templates", path + "media/templates/spay_neuter_voucher.html")
+    add_document_template_from_file("animal,movement", "rspca_adoption.html", "/templates/rspca", path + "media/templates/rspca/rspca_adoption.html")
+    add_document_template_from_file("animal", "rspca_behaviour_observations_cat.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_cat.html")
+    add_document_template_from_file("animal", "rspca_behaviour_observations_dog.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_dog.html")
+    add_document_template_from_file("animal", "rspca_behaviour_observations_rabbit.html", "/templates/rspca", path + "media/templates/rspca/rspca_behaviour_observations_rabbit.html")
+    add_document_template_from_file("animal", "rspca_dog_advice_leaflet.html", "/templates/rspca", path + "media/templates/rspca/rspca_dog_advice_leaflet.html")
+    add_document_template_from_file("animal", "rspca_post_home_visit.html", "/templates/rspca", path + "media/templates/rspca/rspca_post_home_visit.html")
+    add_document_template_from_file("animal", "rspca_transfer_of_ownership.html", "/templates/rspca", path + "media/templates/rspca/rspca_transfer_of_ownership.html")
+    add_document_template_from_file("animal", "rspca_transfer_of_title.html", "/templates/rspca", path + "media/templates/rspca/rspca_transfer_of_title.html")
 
 def install(dbo):
     """
@@ -2520,19 +2649,23 @@ def install(dbo):
     install_default_onlineforms(dbo)
 
 def dump(dbo, includeConfig = True, includeDBFS = True, includeCustomReport = True, \
-        includeNonASM2 = True, includeUsers = True, includeLKS = True, deleteDBV = False, deleteFirst = True, deleteViewSeq = False, \
-        escapeCR = "", uppernames = False, wrapTransaction = True):
+        includeData = True, includeNonASM2 = True, includeUsers = True, includeLKS = True, \
+        includeLookups = True, deleteDBV = False, deleteFirst = True, deleteViewSeq = False, \
+        escapeCR = "", uppernames = False, excludeDBFSTemplates=False, wrapTransaction = True):
     """
     Dumps all of the data in the database as DELETE/INSERT statements.
     includeConfig - include the config table
     includeDBFS - include the dbfs table
     includeCustomReport - include the custom report table
+    includeData - include data tables (animal, owner, etc)
+    includeLookups - include lookup tables
     includeLKS - include static lks tables
     includeUsers - include user and role tables
     deleteDBV - issue DELETE DBV from config after dump to force update/checks
     deleteFirst - issue DELETE FROM statements before INSERTs
     deleteViewSeq - issue DELETE DBViewSeqVersion from config after dump
     escapeCR - A substitute for any \n characters found in values
+    excludeDBFSTemplates - Throw away dbfs lines where the path is internet or template
     uppernames - upper case table names in the output
     wrapTransaction - wrap a transaction around the dump
 
@@ -2543,8 +2676,10 @@ def dump(dbo, includeConfig = True, includeDBFS = True, includeCustomReport = Tr
         if not includeDBFS and t == "dbfs": continue
         if not includeCustomReport and t == "customreport": continue
         if not includeConfig and t == "configuration": continue
+        if not includeData and t in TABLES_DATA: continue
         if not includeUsers and (t == "users" or t == "userrole" or t == "role" or t == "accountsrole" or t == "customreportrole"): continue
         if not includeLKS and t.startswith("lks"): continue
+        if not includeLookups and t in TABLES_LOOKUP: continue
         # ASM2_COMPATIBILITY
         if not includeNonASM2 and t not in TABLES_ASM2 : continue
         outtable = t
@@ -2554,6 +2689,9 @@ def dump(dbo, includeConfig = True, includeDBFS = True, includeCustomReport = Tr
         try:
             sys.stderr.write("dumping %s.., \n" % t)
             for x in dbo.query_to_insert_sql("SELECT * FROM %s" % t, outtable, escapeCR):
+                if excludeDBFSTemplates and t == "dbfs" and \
+                    (x.find("template") != -1 or x.find("internet") != -1 or x.find("report") != -1): 
+                    continue
                 yield x
         except:
             em = str(sys.exc_info())
@@ -2586,6 +2724,36 @@ def dump_dbfs_base64(dbo):
         yield "INSERT INTO dbfs (ID, Name, Path, URL, Content) VALUES (%d, '%s', '%s', '%s', '%s');\n" % (r["ID"], r["NAME"], r["PATH"], url, content)
         del content
 
+def dump_dbfs_files(dbo):
+    """
+    Generator function that dumps the DBFS table, reading every single
+    file and outputting it to /tmp/dump_dbfs_files. 
+    The content column output will be null and the URL updated to
+    file:[DBFSID].[Extension]
+    This can be used to extract large dbfs tables to files and get a copy
+    without changing the original table. It's easy to switch file for s3
+    post insert if necessary.
+    """
+    yield "DELETE FROM dbfs;\n"
+    rows = dbo.query("SELECT ID, Name, Path FROM dbfs ORDER BY ID")
+    for r in rows:
+        name = r.NAME
+        content = ""
+        url = ""
+        # Only try and read the dbfs file if it has an extension and is actually a file
+        if name.find(".") != -1:
+            try:
+                content = asm3.dbfs.get_string_id(dbo, r.ID)
+            except:
+                # Ignore if we couldn't read, leaving content blank
+                pass
+        if content != "":
+            filename = "%s.%s" % (r.ID, name[name.rfind(".")+1:])
+            url = "file:%s" % filename
+            asm3.utils.write_binary_file("/tmp/dump_dbfs_files/%s" % filename, content)
+        yield "INSERT INTO dbfs (ID, Name, Path, URL, Content) VALUES (%d, '%s', '%s', '%s', NULL);\n" % (r.ID, r.NAME, r.PATH, url)
+        del content
+
 def dump_hsqldb(dbo, includeDBFS = True):
     """
     Produces a dump in hsqldb format for use with ASM2
@@ -2602,12 +2770,31 @@ def dump_hsqldb(dbo, includeDBFS = True):
     yield "DELETE FROM configuration WHERE ItemName LIKE 'DatabaseVersion' OR ItemName LIKE 'SMDBLocked';\n"
     yield "INSERT INTO configuration (ItemName, ItemValue) VALUES ('DatabaseVersion', '2870');\n"
 
+def dump_lookups(dbo):
+    """
+    Dumps only the lookup tables. Useful for smcom where we get people requesting a 
+    new account with lookups from another account
+    """
+    for x in dump(dbo, includeDBFS = False, includeConfig = False, includeData = False, includeUsers = False, deleteDBV = True, deleteViewSeq = True, wrapTransaction = True):
+        yield x
+
 def dump_smcom(dbo):
     """
     Dumps the database in a convenient format for import to sheltermanager.com
     generator function.
+    For dumps that came from ASM2, may also want to:
+        1. Remove the DELETE FROM dbfs line manually from the output.
+        2. Remove the userrole and users tables from the output.
     """
-    for x in dump(dbo, includeDBFS = False, includeConfig = False, includeUsers = True, includeLKS = False, deleteDBV = True, deleteViewSeq = True, wrapTransaction = True):
+    # For ASM2 sources, we remove some constraints that were added in ASM3 to make import easy
+    yield "\\set ON_ERROR_STOP\n"
+    yield "ALTER TABLE animal ALTER AcceptanceNumber DROP NOT NULL;\n"
+    yield "ALTER TABLE animal ALTER IdentichipNumber DROP NOT NULL;\n"
+    yield "ALTER TABLE animal ALTER TattooNumber DROP NOT NULL;\n"
+    yield "ALTER TABLE animal ALTER BondedAnimalID DROP NOT NULL;\n"
+    yield "ALTER TABLE animal ALTER BondedAnimal2ID DROP NOT NULL;\n"
+    yield "ALTER TABLE animalvaccination ALTER Cost DROP NOT NULL;\n"
+    for x in dump(dbo, includeDBFS = True, includeConfig = False, includeUsers = True, includeLKS = False, deleteDBV = True, deleteViewSeq = True, excludeDBFSTemplates = True, wrapTransaction = True):
         yield x
 
 def dump_merge(dbo, deleteViewSeq = True):
@@ -2616,9 +2803,9 @@ def dump_merge(dbo, deleteViewSeq = True):
     so that they can be inserted into another database.
     """
     ID_OFFSET = 100000
-    s = []
     def fix_and_dump(table, fields):
         rows = dbo.query("SELECT * FROM %s" % table)
+        s = []
         for r in rows:
             # Add ID_OFFSET to all ID fields in the rows
             for f in fields:
@@ -2626,61 +2813,77 @@ def dump_merge(dbo, deleteViewSeq = True):
                 # Don't add anything to these two, but prefix them so merging is obvious
                 if f == "ADOPTIONNUMBER" or f == "SHELTERCODE":
                     r[f] = "MG" + r[f]
+                # DBFS URLs prefixed with file: or s3:
+                # (note that files will have to be renamed manually)
+                elif f == "URL":
+                    if r[f] and (r[f].startswith("file:") or r[f].startswith("s3:")):
+                        v = r[f]
+                        prefix = "file"
+                        if v.startswith("s3:"): prefix = "s3"
+                        ext = v[v.rfind(".")+1:]
+                        num = asm3.utils.atoi(v) + ID_OFFSET
+                        r[f] = "%s:%s.%s" % ( prefix, num, ext )
                 elif r[f] is not None:
                     r[f] += ID_OFFSET
             # Make any lookup values we copy over inactive
             if "ISRETIRED" in r: 
                 r.ISRETIRED = 1 
             s.append(dbo.row_to_insert_sql(table, r, escapeCR = ""))
+        return "\n".join(s)
 
-    fix_and_dump("additional", [ "AdditionalFieldID", "LinkID" ])
-    fix_and_dump("additionalfield", [ "ID" ])
-    fix_and_dump("adoption", [ "ID", "AnimalID", "AdoptionNumber", "OwnerID", "RetailerID", "OriginalRetailerMovementID" ])
-    fix_and_dump("animal", [ "ID", "AnimalTypeID", "ShelterLocation", "ShelterCode", "BondedAnimalID", "BondedAnimal2ID", "OwnersVetID", "CurrentVetID", "OriginalOwnerID", "BroughtInByOwnerID", "ActiveMovementID" ])
-    fix_and_dump("animalcontrol", [ "ID", "CallerID", "VictimID", "OwnerID", "Owner2ID", "Owner3ID" ])
-    fix_and_dump("animalcontrolanimal", [ "AnimalID", "AnimalControlID" ])
-    fix_and_dump("animalcost", [ "ID", "AnimalID", "CostTypeID" ])
-    fix_and_dump("costtype", [ "ID", ])
-    fix_and_dump("animaldiet", [ "ID", "AnimalID" ])
-    fix_and_dump("animalfound", [ "ID", "OwnerID" ])
-    fix_and_dump("animallitter", [ "ID", "ParentAnimalID" ])
-    fix_and_dump("animallost", [ "ID", "OwnerID" ])
-    fix_and_dump("animalmedical", [ "ID", "AnimalID", "MedicalProfileID" ])
-    fix_and_dump("animalmedicaltreatment", [ "ID", "AnimalID", "AnimalMedicalID" ])
-    fix_and_dump("animalpublished", [ "AnimalID" ])
-    fix_and_dump("animaltest", [ "ID", "AnimalID", "TestTypeID", "TestResultID" ])
-    fix_and_dump("animaltype", [ "ID", ])
-    fix_and_dump("animaltransport", [ "ID", "AnimalID", "DriverOwnerID", "PickupOwnerID", "DropoffOwnerID" ])
-    fix_and_dump("animalvaccination", [ "ID", "AnimalID", "VaccinationID" ])
-    fix_and_dump("animalwaitinglist", [ "ID", "OwnerID" ])
-    fix_and_dump("diary", [ "ID", "LinkID" ])
-    fix_and_dump("internallocation", [ "ID", ])
-    fix_and_dump("lkanimalflags", [ "ID", ])
-    fix_and_dump("lkownerflags", [ "ID", ])
-    fix_and_dump("lkworktype", [ "ID", ])
-    fix_and_dump("log", [ "ID", "LinkID" ])
-    fix_and_dump("medicalprofile", [ "ID" ])
-    fix_and_dump("owner", [ "ID", "HomeCheckedBy" ])
-    fix_and_dump("ownercitation", [ "ID", "OwnerID", "AnimalControlID" ])
-    fix_and_dump("ownerdonation", [ "ID", "AnimalID", "OwnerID", "MovementID", "DonationTypeID" ])
-    fix_and_dump("donationtype", [ "ID", ])
-    fix_and_dump("ownerinvestigation", [ "ID", "OwnerID" ])
-    fix_and_dump("ownerlicence", [ "ID", "OwnerID", "AnimalID", "LicenceTypeID" ])
-    fix_and_dump("licencetype", [ "ID", ])
-    fix_and_dump("ownerrota", [ "ID", "OwnerID" ])
-    fix_and_dump("ownertraploan", [ "ID", "OwnerID" ])
-    fix_and_dump("ownervoucher", [ "ID", "OwnerID", "VoucherID" ])
-    fix_and_dump("stocklevel", [ "ID", "StockLocationID" ])
-    fix_and_dump("stocklocation", [ "ID", ])
-    fix_and_dump("stockusage", [ "ID", "StockLevelID" ])
-    fix_and_dump("templatedocument", [ "ID", ])
-    fix_and_dump("templatehtml", [ "ID", ])
-    fix_and_dump("testtype", [ "ID", ])
-    fix_and_dump("testresult", [ "ID", ])
-    fix_and_dump("vaccinationtype", [ "ID", ])
-    fix_and_dump("voucher", [ "ID", ])
-    if deleteViewSeq: s.append("DELETE FROM configuration WHERE ItemName LIKE 'DBViewSeqVersion';\n")
-    return "".join(s)
+    yield fix_and_dump("additional", [ "AdditionalFieldID", "LinkID" ])
+    yield fix_and_dump("additionalfield", [ "ID" ])
+    yield fix_and_dump("adoption", [ "ID", "AnimalID", "AdoptionNumber", "OwnerID", "RetailerID", "OriginalRetailerMovementID" ])
+    yield fix_and_dump("animal", [ "ID", "AnimalTypeID", "BreedID", "Breed2ID", "SpeciesID", "ShelterLocation", "ShelterCode", "BondedAnimalID", "BondedAnimal2ID", "PickupLocationID", "JurisdictionID", "OwnersVetID", "CurrentVetID", "OriginalOwnerID", "BroughtInByOwnerID", "ActiveMovementID" ])
+    yield fix_and_dump("animalcontrol", [ "ID", "CallerID", "VictimID", "PickupLocationID", "JurisdictionID", "OwnerID", "Owner2ID", "Owner3ID" ])
+    yield fix_and_dump("animalcontrolanimal", [ "AnimalID", "AnimalControlID" ])
+    yield fix_and_dump("animalcost", [ "ID", "AnimalID", "CostTypeID" ])
+    yield fix_and_dump("breed", [ "ID" ])
+    yield fix_and_dump("costtype", [ "ID" ])
+    yield fix_and_dump("animaldiet", [ "ID", "AnimalID" ])
+    yield fix_and_dump("animalfound", [ "ID", "OwnerID", "AnimalTypeID", "BreedID" ])
+    yield fix_and_dump("animallitter", [ "ID", "ParentAnimalID" ])
+    yield fix_and_dump("animallost", [ "ID", "OwnerID", "AnimalTypeID", "BreedID" ])
+    yield fix_and_dump("animalmedical", [ "ID", "AnimalID", "MedicalProfileID" ])
+    yield fix_and_dump("animalmedicaltreatment", [ "ID", "AnimalID", "AnimalMedicalID" ])
+    yield fix_and_dump("animalpublished", [ "AnimalID" ])
+    yield fix_and_dump("animaltest", [ "ID", "AnimalID", "TestTypeID", "TestResultID" ])
+    yield fix_and_dump("animaltype", [ "ID", ])
+    yield fix_and_dump("animaltransport", [ "ID", "AnimalID", "DriverOwnerID", "PickupOwnerID", "DropoffOwnerID" ])
+    yield fix_and_dump("animalvaccination", [ "ID", "AnimalID", "VaccinationID" ])
+    yield fix_and_dump("animalwaitinglist", [ "ID", "OwnerID" ])
+    yield fix_and_dump("diary", [ "ID", "LinkID" ])
+    yield fix_and_dump("internallocation", [ "ID", ])
+    yield fix_and_dump("jurisdiction", [ "ID", ])
+    yield fix_and_dump("lkanimalflags", [ "ID", ])
+    yield fix_and_dump("lkownerflags", [ "ID", ])
+    yield fix_and_dump("lkworktype", [ "ID", ])
+    yield fix_and_dump("log", [ "ID", "LinkID" ])
+    yield fix_and_dump("media", [ "ID", "DBFSID", "LinkID" ])
+    yield fix_and_dump("medicalprofile", [ "ID" ])
+    yield fix_and_dump("owner", [ "ID", "HomeCheckedBy", "JurisdictionID" ])
+    yield fix_and_dump("ownercitation", [ "ID", "OwnerID", "AnimalControlID" ])
+    yield fix_and_dump("ownerdonation", [ "ID", "AnimalID", "OwnerID", "MovementID", "DonationTypeID" ])
+    yield fix_and_dump("donationtype", [ "ID", ])
+    yield fix_and_dump("ownerinvestigation", [ "ID", "OwnerID" ])
+    yield fix_and_dump("ownerlicence", [ "ID", "OwnerID", "AnimalID", "LicenceTypeID" ])
+    yield fix_and_dump("licencetype", [ "ID", ])
+    yield fix_and_dump("ownerrota", [ "ID", "OwnerID" ])
+    yield fix_and_dump("ownertraploan", [ "ID", "OwnerID" ])
+    yield fix_and_dump("ownervoucher", [ "ID", "OwnerID", "VoucherID" ])
+    yield fix_and_dump("pickuplocation", [ "ID" ])
+    yield fix_and_dump("species", [ "ID" ])
+    yield fix_and_dump("stocklevel", [ "ID", "StockLocationID" ])
+    yield fix_and_dump("stocklocation", [ "ID", ])
+    yield fix_and_dump("stockusage", [ "ID", "StockLevelID" ])
+    yield fix_and_dump("templatedocument", [ "ID", ])
+    yield fix_and_dump("templatehtml", [ "ID", ])
+    yield fix_and_dump("testtype", [ "ID", ])
+    yield fix_and_dump("testresult", [ "ID", ])
+    yield fix_and_dump("vaccinationtype", [ "ID", ])
+    yield fix_and_dump("voucher", [ "ID", ])
+    yield fix_and_dump("dbfs", [ "ID", "URL" ])
+    if deleteViewSeq: yield "DELETE FROM configuration WHERE ItemName LIKE 'DBViewSeqVersion';\n"
 
 def diagnostic(dbo):
     """
@@ -2726,20 +2929,154 @@ def diagnostic(dbo):
 
 def fix_preferred_photos(dbo):
     """
-    Resets the web and doc preferred flags on all photos to the latest one for animal/people records.
+    Resets the web and doc preferred flags on all photos to the latest one for all media records.
     This is useful in situations where users have borked them by running queries in the past.
     This should only be used as a last resort as all previous preferred photo info will be deleted.
     """
-    dbo.execute("UPDATE media SET WebsitePhoto=0, DocPhoto=0")
-    # Animals
-    ra = dbo.execute("UPDATE media INNER JOIN " \
-        "(SELECT MAX(ID) AS NewPref, LinkID FROM media WHERE MediaName LIKE '%.jpg' AND LinkTypeID = 0 GROUP BY LinkID) z " \
-        "ON z.NewPref=media.ID SET WebsitePhoto=1, DocPhoto=1")
-    # People
-    ra += dbo.execute("UPDATE media INNER JOIN " \
-        "(SELECT MAX(ID) AS NewPref, LinkID FROM media WHERE MediaName LIKE '%.jpg' AND LinkTypeID = 3 GROUP BY LinkID) z " \
-        "ON z.NewPref=media.ID SET WebsitePhoto=1, DocPhoto=1")
-    return ra
+    rows = dbo.query("SELECT LinkID, LinkTypeID, ID FROM media ORDER BY LinkID, LinkTypeID, ID DESC")
+    batch = []
+    lastlinkid = 0
+    lastlinktypeid = 0
+    for r in rows:
+        if lastlinkid != r.linkid and lastlinktypeid != r.linktypeid:
+            batch.append([r.id])
+            lastlinkid = r.linkid
+            lastlinktypeid = r.linktypeid
+    dbo.execute_dbupdate("UPDATE media SET WebsitePhoto=0, DocPhoto=0")
+    dbo.execute_many("UPDATE media SET WebsitePhoto=1, DocPhoto=1 WHERE ID=?", batch, override_lock=True) 
+    return len(batch)
+
+def replace_html_entities(dbo):
+    """
+    Substitutes HTML entities in every text field in the database with their appropriate unicode codepoint.
+    Used for the transition between v44 and v45 where we stopped storing unicode as HTML entities and an
+    existing database needs to be switched. 
+    Only really needs to be run for non-English databases (ie. NOT en, en_GB, and en_AU)
+    """
+    cols = {
+        "accounts": [ "Code", "Description" ],
+        "accountstrx": [ "Description" ],
+        #"additional": [ "Value" ], # Handled separately due to lack of ID field
+        "additionalfield": [ "FieldName", "FieldLabel", "Tooltip", "LookupValues", "DefaultValue" ],
+        "adoption": [ "Comments", "ReasonForReturn" ],
+        "animal": [ "AnimalName", "BreedName", "Markings", "AgeGroup", "HiddenAnimalDetails", "AnimalComments", 
+            "ReasonForEntry", "ReasonNO", "HealthProblems", "PTSReason", "AdditionalFlags", "ShelterLocationUnit", 
+            "TimeOnShelter", "TotalTimeOnShelter", "AgeGroupActiveMovement", "AnimalAge" ],
+        "animalcontrol": [ "CallNotes", "DispatchAddress", "DispatchTown", "DispatchCounty", "DispatchPostcode",
+                "DispatchLatLong", "DispatchedACO", "AnimalDescription", "AgeGroup"],
+        "animalcost": [ "Description" ],
+        "animaldiet": [ "Comments" ],
+        "animalfound": [ "AgeGroup", "DistFeat", "AreaFound", "AreaPostcode", "Comments" ],
+        "animallitter": [ "Comments" ],
+        "animallost": [ "AgeGroup", "DistFeat", "AreaLost", "AreaPostcode", "Comments" ],
+        "animalmedical": [ "TreatmentName", "Dosage", "Comments" ],
+        "animalmedicaltreatment": [ "GivenBy", "Comments" ],
+        "animaltest": [ "Comments" ],
+        "animaltransport": [ "TransportReference", "PickupAddress", "PickupTown", "PickupCounty", "PickupPostcode", 
+                "PickupCountry", "DropoffAddress", "DropoffTown", "DropoffCounty", "DropoffPostcode", "DropoffCountry", 
+                "Comments" ],
+        "animaltype": [ "AnimalType", "AnimalDescription" ],
+        "animalvaccination": [ "GivenBy", "Manufacturer", "Comments" ],
+        "animalwaitinglist": [ "AnimalDescription", "ReasonForWantingToPart", "ReasonForRemoval", "Comments" ],
+        "basecolour": [ "BaseColour", "BaseColourDescription" ],
+        "breed": [ "BreedName", "BreedDescription" ],
+        "citationtype": [ "CitationName", "CitationDescription" ],
+        "clinicappointment": [ "ApptFor", "ReasonForAppointment", "Comments" ],
+        "clinicinvoiceitem": [ "Description" ],
+        "costtype": [ "CostTypeName" ],
+        "customreport": [ "Title", "Category", "SQLCommand", "HTMLBody", "Description" ],
+        "deathreason": [ "ReasonName", "ReasonDescription" ],
+        "diary": [ "DiaryForName", "Subject", "Note", "Comments" ],
+        "diarytaskdetail": [ "WhoFor", "Subject", "Note" ],
+        "diarytaskhead": [ "Name" ],
+        "diet": [ "DietName", "DietDescription" ],
+        "donationtype": [ "DonationName", "DonationDescription" ],
+        "donationpayment": [ "PaymentName", "PaymentDescription" ],
+        "entryreason": [ "ReasonName", "ReasonDescription" ],
+        "incidentcompleted": [ "CompletedName", "CompletedDescription" ],
+        "incidenttype": [ "IncidentName", "IncidentDescription" ],
+        "internallocation": [ "LocationName", "LocationDescription", "Units" ],
+        "jurisdiction": [ "JurisdictionName", "JurisdictionDescription" ],
+        "licencetype": [ "LicenceTypeName", "LicenceTypeDescription" ],
+        "lksaccounttype": [ "AccountType" ],
+        "lkanimalflags": [ "Flag" ],
+        "lkownerflags": [ "Flag" ],
+        "lksclinicstatus": [ "Status" ],
+        "lkcoattype": [ "CoatType" ],
+        "lksex": [ "Sex" ],
+        "lksize": [ "Size" ],
+        "lksmovementtype": [ "MovementType" ],
+        "lksfieldlink": [ "LinkType" ],
+        "lksfieldtype": [ "FieldType" ],
+        "lksmedialink": [ "LinkType" ],
+        "lksmediatype": [ "MediaType" ],
+        "lksdiarylink": [ "LinkType" ],
+        "lksdonationfreq": [ "Frequency" ],
+        "lksloglink": [ "LinkType" ],
+        "lksrotatype": [ "RotaType" ],
+        "lkstransportstatus": [ "Name" ],
+        "lkurgency": [ "Urgency" ],
+        "lksyesno": [ "Name" ],
+        "lksynun": [ "Name" ],
+        "lksynunk": [ "Name" ],
+        "lksposneg": [ "Name" ],
+        "lkworktype": [ "WorkType" ],
+        "log": [ "Comments" ],
+        "logtype": [ "LogTypeName", "LogTypeDescription" ],
+        "media": [ "MediaNotes" ],
+        "medicalprofile": [ "ProfileName", "TreatmentName", "Dosage", "Comments" ],
+        "messages": [ "ForName", "Message" ],
+        "onlineform": [ "Name", "Description" ],
+        "onlineformfield": [ "Label", "Lookups" ],
+        "owner": [ "OwnerCode", "OwnerTitle", "OwnerInitials", "OwnerForeNames", "OwnerSurname", "OwnerName", 
+            "OwnerAddress", "OwnerTown", "OwnerCounty", "OwnerPostcode", "OwnerCountry", "LatLong", "HomeTelephone",
+            "WorkTelephone", "MobileTelephone", "EmailAddress", "Comments", "MembershipNumber", "AdditionalFlags",
+            "HomeCheckAreas", "MatchCommentsContain" ],
+        "ownercitation": [ "Comments" ],
+        "ownerdonation": [ "ChequeNumber", "Comments" ],
+        "ownerinvestigation": [ "Notes" ],
+        "ownerlicence": [ "LicenceNumber", "Comments" ],
+        "ownerrota": [ "Comments" ],
+        "ownertraploan": [ "TrapNumber", "Comments" ],
+        "ownervoucher": [ "VoucherCode", "Comments" ],
+        "pickuplocation": [ "LocationName", "LocationDescription" ],
+        "reservationstatus": [ "StatusName", "StatusDescription" ],
+        "role": [ "Rolename" ],
+        "site": [ "SiteName" ],
+        "species": [ "SpeciesName", "SpeciesDescription" ],
+        "stocklevel": [ "Name", "UnitName", "Description" ],
+        "stocklocation": [ "LocationName", "LocationDescription" ],
+        "stockusage": [ "Comments" ],
+        "stockusagetype": [ "UsageTypeName", "UsageTypeDescription" ], 
+        "templatedocument": [ "Name", "Path" ],
+        "templatehtml": [ "Name" ],
+        "testtype": [ "TestName", "TestDescription" ],
+        "testresult": [ "ResultName", "ResultDescription" ],
+        "traptype": [ "TrapTypeName", "TrapTypeDescription" ],
+        "transporttype": [ "TransportTypeName", "TransportTypeDescription" ],
+        "users": [ "UserName", "RealName" ],
+        "voucher": [ "VoucherName", "VoucherDescription" ],
+        "vaccinationtype": [ "VaccinationType", "VaccinationDescription" ]
+    }
+    # Handle additional fields separately due to their lack of ID field
+    batch = []
+    for r in dbo.query("SELECT LinkType, LinkID, AdditionalFieldID, Value FROM additional WHERE Value LIKE '%&#%'"):
+        batch.append(( asm3.utils.decode_html(r.VALUE), r.LINKTYPE, r.LINKID, r.ADDITIONALFIELDID ))
+    asm3.al.info(f"additional ({len(batch)} rows)", "dbupdate.replace_html_entities", dbo)
+    dbo.execute_many("UPDATE additional SET Value=? WHERE LinkType=? AND LinkID=? AND AdditionalFieldID=?", batch)
+    for table, fields in cols.items():
+        batch = []
+        rows = dbo.query(f"SELECT ID, {','.join(fields)} FROM {table} ORDER BY ID")
+        batchq = f"UPDATE {table} SET {','.join([ f + '=?' for f in fields ])} WHERE ID=?"
+        for r in rows:
+            ibatch = []
+            for f in fields:
+                ibatch.append(asm3.utils.decode_html(r[f.upper()]))
+            ibatch.append(r.ID)
+            batch.append(ibatch)
+        dbo.execute_many(batchq, batch)
+        asm3.al.info(f"{table} ({len(batch)} rows)", "dbupdate.replace_html_entities", dbo)
+    if asm3.smcom.active(): asm3.smcom.vacuum_full(dbo)
 
 def check_for_updates(dbo):
     """
@@ -2762,15 +3099,8 @@ def reset_db(dbo):
     """
     Resets a database by removing all data from non-lookup tables.
     """
-    deltables = [ "accountstrx", "additional", "adoption", "animal", "animalcontrol", "animalcost",
-        "animaldiet", "animalfigures", "animalfiguresannual", 
-        "animalfound", "animallitter", "animallost", "animalmedical", "animalmedicaltreatment", "animalname",
-        "animaltest", "animaltransport", "animalvaccination", "animalwaitinglist", "diary", "log",
-        "media", "messages", "owner", "ownercitation", "ownerdonation", "ownerinvestigation", "ownerlicence", 
-        "ownertraploan", "ownervoucher", "stocklevel", "stockusage" ]
-    for t in deltables:
+    for t in TABLES_DATA:
         dbo.execute_dbupdate("DELETE FROM %s" % t)
-    asm3.dbfs.delete_orphaned_media(dbo) # this deletes dbfs items referenced by the media we just deleted
     install_db_sequences(dbo)
 
 def perform_updates(dbo):
@@ -2839,15 +3169,11 @@ def remove_asm2_compatibility(dbo):
     # ASM2_COMPATIBILITY
     dbo.execute_dbupdate("ALTER TABLE users DROP COLUMN SecurityMap")
     dbo.execute_dbupdate("ALTER TABLE animal DROP COLUMN SmartTagSentDate")
-    dbo.execute_dbupdate("ALTER TABLE animal DROP COLUMN YearCodeID")
-    dbo.execute_dbupdate("ALTER TABLE animal DROP COLUMN UniqueCodeID")
     dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN LastPublished")
     dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN LastPublishedPF")
     dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN LastPublishedAP")
     dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN LastPublishedP911")
     dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN LastPublishedRG")
-    dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN NewSinceLastPublish")
-    dbo.execute_dbupdate("ALTER TABLE media DROP COLUMN UpdatedSinceLastPublish")
 
 def update_3000(dbo):
     path = dbo.installpath
@@ -3431,7 +3757,8 @@ def update_3307(dbo):
     dbo.execute_dbupdate(sql)
 
 def update_3308(dbo):
-    # Create intial data for testtype and testresult tables
+    # Create initial data for testtype and testresult tables
+    if dbo.query_int("SELECT COUNT(*) FROM testtype") > 0: return
     l = dbo.locale
     dbo.execute_dbupdate("INSERT INTO testresult (ID, ResultName) VALUES (1, '" + _("Unknown", l) + "')")
     dbo.execute_dbupdate("INSERT INTO testresult (ID, ResultName) VALUES (2, '" + _("Negative", l) + "')")
@@ -3441,6 +3768,7 @@ def update_3308(dbo):
     dbo.execute_dbupdate("INSERT INTO testtype (ID, TestName, DefaultCost) VALUES (3, '" + _("Heartworm", l) + "', 0)")
 
 def update_3309(dbo):
+    if dbo.query_int("SELECT COUNT(*) FROM animaltest") > 0: return
     fiv = dbo.query("SELECT ID, CombiTestDate, CombiTestResult FROM animal WHERE CombiTested = 1 AND CombiTestDate Is Not Null")
     asm3.al.debug("found %d fiv results to convert" % len(fiv), "update_3309", dbo)
     for f in fiv:
@@ -4341,12 +4669,7 @@ def update_33711(dbo):
     add_column(dbo, "ownerdonation", "ReceiptNumber", dbo.type_shorttext)
     add_index(dbo, "ownerdonation_ReceiptNumber", "ownerdonation", "ReceiptNumber")
     # Use ID to prepopulate existing records
-    if dbo.dbtype == "POSTGRESQL":
-        dbo.execute_dbupdate("UPDATE ownerdonation SET ReceiptNumber = LPAD(ID::text, 8, '0')")
-    elif dbo.dbtype == "MYSQL":
-        dbo.execute_dbupdate("UPDATE ownerdonation SET ReceiptNumber = LPAD(ID, 8, '0')")
-    else:
-        dbo.execute_dbupdate("UPDATE ownerdonation SET ReceiptNumber = ID")
+    dbo.execute_dbupdate("UPDATE ownerdonation SET ReceiptNumber = %s" % dbo.sql_zero_pad_left("ID", 8))
 
 def update_33712(dbo):
     # Add ownerdonation Sales Tax/VAT fields
@@ -4769,7 +5092,7 @@ def update_34015(dbo):
     # Set sizes to 0 they'll be updated by another process later 
     dbo.execute_dbupdate("UPDATE media SET MediaSize = 0")
     # Find the right DBFS element for each media item
-    dbo.execute_dbupdate("UPDATE media SET DBFSID = (SELECT MAX(ID) FROM dbfs WHERE Name LIKE media.MediaName)")
+    dbo.execute_dbupdate("UPDATE media SET DBFSID = (SELECT MAX(ID) FROM dbfs WHERE Name LIKE media.MediaName) WHERE MediaType=0")
     dbo.execute_dbupdate("UPDATE media SET DBFSID = 0 WHERE DBFSID Is Null")
     # Remove any _scaled component of names from both media and dbfs
     dbo.execute_dbupdate("UPDATE media SET MediaName = %s WHERE MediaName LIKE '%%_scaled%%'" % dbo.sql_replace("MediaName", "_scaled", ""))
@@ -5084,3 +5407,301 @@ def update_34300(dbo):
     add_index(dbo, "animal_ExtraIDs", "animal", "ExtraIDs")
     dbo.execute_dbupdate("UPDATE animal SET ExtraIDs = ''")
 
+def update_34301(dbo):
+    # Add onlineformfield.SpeciesID
+    add_column(dbo, "onlineformfield", "SpeciesID", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE onlineformfield SET SpeciesID = -1")
+
+def update_34302(dbo):
+    # Add lksynunk
+    l = dbo.locale
+    sql = "CREATE TABLE lksynunk ( ID INTEGER NOT NULL PRIMARY KEY, " \
+        "Name %(short)s NOT NULL)" % { "short": dbo.type_shorttext }
+    dbo.execute_dbupdate(sql)
+    dbo.execute_dbupdate("INSERT INTO lksynunk VALUES (0, ?)", [ _("Yes", l) ])
+    dbo.execute_dbupdate("INSERT INTO lksynunk VALUES (1, ?)", [ _("No", l) ])
+    dbo.execute_dbupdate("INSERT INTO lksynunk VALUES (2, ?)", [ _("Unknown", l) ])
+    dbo.execute_dbupdate("INSERT INTO lksynunk VALUES (5, ?)", [ _("Over 5", l) ])
+    dbo.execute_dbupdate("INSERT INTO lksynunk VALUES (12, ?)", [ _("Over 12", l) ])
+
+def update_34303(dbo):
+    # Add lkstransportstatus
+    l = dbo.locale
+    sql = "CREATE TABLE lkstransportstatus ( ID INTEGER NOT NULL PRIMARY KEY, " \
+        "Name %(short)s NOT NULL)" % { "short": dbo.type_shorttext }
+    dbo.execute_dbupdate(sql)
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (1, ?)", [ _("New", l) ])
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (2, ?)", [ _("Confirmed", l) ])
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (3, ?)", [ _("Hold", l) ])
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (4, ?)", [ _("Scheduled", l) ])
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (10, ?)", [ _("Cancelled", l) ])
+    dbo.execute_dbupdate("INSERT INTO lkstransportstatus VALUES (11, ?)", [ _("Completed", l) ])
+
+def update_34304(dbo):
+    # Add new ownervoucher columns
+    add_column(dbo, "ownervoucher", "AnimalID", dbo.type_integer)
+    add_column(dbo, "ownervoucher", "DatePresented", dbo.type_datetime)
+    add_column(dbo, "ownervoucher", "VoucherCode", dbo.type_shorttext)
+    add_index(dbo, "ownervoucher_AnimalID", "ownervoucher", "AnimalID")
+    add_index(dbo, "ownervoucher_DatePresented", "ownervoucher", "DatePresented")
+    add_index(dbo, "ownervoucher_VoucherCode", "ownervoucher", "VoucherCode")
+    # Set the default vouchercode to ID padded to 6 digits
+    dbo.execute_dbupdate("UPDATE ownervoucher SET VoucherCode = %s" % dbo.sql_zero_pad_left("ID", 6))
+
+def update_34305(dbo):
+    # Add vaccinationtype.RescheduleDays
+    add_column(dbo, "vaccinationtype", "RescheduleDays", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE vaccinationtype SET RescheduleDays = 0 WHERE RescheduleDays Is Null")
+    # Add animallost.MicrochipNumber and animalfound.MicrochipNumber
+    add_column(dbo, "animallost", "MicrochipNumber", dbo.type_shorttext)
+    add_column(dbo, "animalfound", "MicrochipNumber", dbo.type_shorttext)
+    add_index(dbo, "animallost_MicrochipNumber", "animallost", "MicrochipNumber")
+    add_index(dbo, "animalfound_MicrochipNumber", "animalfound", "MicrochipNumber")
+    # Add animallostfoundmatch.LostMicrochipNumber/FoundMicrochipNumber
+    add_column(dbo, "animallostfoundmatch", "LostMicrochipNumber", dbo.type_shorttext)
+    add_column(dbo, "animallostfoundmatch", "FoundMicrochipNumber", dbo.type_shorttext)
+
+def update_34306(dbo):
+    # Add owner.IsAdopter flag
+    add_column(dbo, "owner", "IsAdopter", dbo.type_integer)
+    add_index(dbo, "owner_IsAdopter", "owner", "IsAdopter")
+    dbo.execute_dbupdate("UPDATE owner SET IsAdopter = (SELECT COUNT(*) FROM adoption WHERE OwnerID = owner.ID AND MovementType=1 AND MovementDate Is Not Null AND ReturnDate Is Null)")
+    dbo.execute_dbupdate("UPDATE owner SET IsAdopter = 1 WHERE IsAdopter > 0")
+
+def update_34400(dbo):
+    # Add new lksdonationfreq for fortnightly with ID 2
+    # This requires renumbering the existing frequencies up one as there was no spare slot
+    if dbo.query_int("SELECT MAX(ID) FROM lksdonationfreq") == 6: return # We already did this
+    l = dbo.locale
+    dbo.execute_dbupdate("UPDATE lksdonationfreq SET ID=6 WHERE ID=5")
+    dbo.execute_dbupdate("UPDATE lksdonationfreq SET ID=5 WHERE ID=4")
+    dbo.execute_dbupdate("UPDATE lksdonationfreq SET ID=4 WHERE ID=3")
+    dbo.execute_dbupdate("UPDATE lksdonationfreq SET ID=3 WHERE ID=2")
+    dbo.execute_dbupdate("UPDATE ownerdonation SET Frequency=Frequency+1 WHERE Frequency IN (2,3,4,5)")
+    dbo.execute_dbupdate("INSERT INTO lksdonationfreq (ID, Frequency) VALUES (2, ?)", [ _("Fortnightly", l) ])
+
+def update_34401(dbo):
+    # Add ownerdonation.PaymentProcessorData
+    add_column(dbo, "ownerdonation", "PaymentProcessorData", dbo.type_longtext)
+
+def update_34402(dbo):
+    # Add media.CreatedDate
+    add_column(dbo, "media", "CreatedDate", dbo.type_datetime)
+    add_index(dbo, "media_CreatedDate", "media", "CreatedDate")
+    dbo.execute_dbupdate("UPDATE media SET CreatedDate=Date")
+
+def update_34403(dbo):
+    # Add onlineformfield.VisibleIf
+    add_column(dbo, "onlineformfield", "VisibleIf", dbo.type_shorttext)
+    dbo.execute_dbupdate("UPDATE onlineformfield SET VisibleIf=''")
+
+def update_34404(dbo):
+    # Add animal.OwnerID
+    add_column(dbo, "animal", "OwnerID", dbo.type_integer)
+    add_index(dbo, "animal_OwnerID", "animal", "OwnerID")
+    # Set currentownerid for non-shelter animals
+    dbo.execute_dbupdate("UPDATE animal SET OwnerID = OriginalOwnerID WHERE NonShelterAnimal=1")
+    # Set currentownerid for animals with an active exit movement
+    dbo.execute_dbupdate("UPDATE animal SET OwnerID = " \
+        "(SELECT OwnerID FROM adoption WHERE ID = animal.ActiveMovementID) " \
+        "WHERE Archived = 1 AND ActiveMovementType IN (1, 3, 5)")
+    # Remove nulls
+    dbo.execute_dbupdate("UPDATE animal SET OwnerID = 0 WHERE OwnerID Is Null")
+
+def update_34405(dbo):
+    # Correct payment amounts to gross where sales tax exists.
+    # This query only updates the amount if the tax value matches
+    # an exclusive of tax calculation.
+    # Eg: amount = 100, vat = 6, rate = 6 - will update amount to 106 because 100 * 0.06 == 6.0
+    #     amount = 106, vat = 6, rate = 6 - will not update as 106 * 0.06 == 6.35
+    dbo.execute_dbupdate("UPDATE ownerdonation SET donation = donation + vatamount, " \
+        "LastChangedBy = %s " \
+        "WHERE isvat = 1 and vatamount > 0 and vatrate > 0 and vatamount = ((donation / 100.0) * vatrate)" % 
+        dbo.sql_concat(["LastChangedBy", "'+dbupdate34405'"]))
+
+def update_34406(dbo):
+    # Remove bloated items from the config table that now live in the disk cache
+    dbo.execute_dbupdate("DELETE FROM configuration WHERE ItemName IN " \
+        "('ASMNews', 'LookingForReport', 'LookingForLastMatchCount', 'LostFoundReport', 'LostFoundLastMatchCount')")
+
+def update_34407(dbo):
+    # Add animal.JurisdictionID
+    add_column(dbo, "animal", "JurisdictionID", dbo.type_integer)
+    add_index(dbo, "animal_JurisdictionID", "animal", "JurisdictionID")
+    # Set it on existing animals based on original owner, then brought in by jurisdiction
+    dbo.execute_dbupdate("UPDATE animal SET JurisdictionID = " \
+        "(SELECT JurisdictionID FROM owner WHERE ID = animal.OriginalOwnerID) WHERE JurisdictionID Is Null")
+    dbo.execute_dbupdate("UPDATE animal SET JurisdictionID = " \
+        "(SELECT JurisdictionID FROM owner WHERE ID = animal.BroughtInByOwnerID) WHERE JurisdictionID Is Null")
+    dbo.execute_dbupdate("UPDATE animal SET JurisdictionID = 0 WHERE JurisdictionID Is Null")
+
+def update_34408(dbo):
+    # Add TNR movement type
+    l = dbo.locale
+    dbo.execute_dbupdate("INSERT INTO lksmovementtype (ID, MovementType) VALUES (13, ?)", [ _("TNR", l) ])
+
+def update_34409(dbo):
+    # Add animalvaccination.RabiesTag
+    add_column(dbo, "animalvaccination", "RabiesTag", dbo.type_shorttext)
+    add_index(dbo, "animalvaccination_RabiesTag", "animalvaccination", "RabiesTag")
+    dbo.execute_update("UPDATE animalvaccination SET RabiesTag='' WHERE RabiesTag Is Null")
+
+def update_34410(dbo):
+    # Add owner.ExtraIDs
+    add_column(dbo, "owner", "ExtraIDs", dbo.type_shorttext)
+    add_index(dbo, "owner_ExtraIDs", "owner", "ExtraIDs")
+    dbo.execute_dbupdate("UPDATE owner SET ExtraIDs = ''")
+
+def update_34411(dbo):
+    # Add animal.PopupWarning
+    add_column(dbo, "animal", "PopupWarning", dbo.type_longtext)
+    dbo.execute_dbupdate("UPDATE animal SET PopupWarning = ''")
+
+def update_34500(dbo):
+    # Add testtype.RescheduleDays
+    add_column(dbo, "testtype", "RescheduleDays", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE testtype SET RescheduleDays = 0 WHERE RescheduleDays Is Null")
+
+def update_34501(dbo):
+    # Add animal.Adoptable
+    add_column(dbo, "animal", "Adoptable", dbo.type_integer)
+    add_index(dbo, "animal_Adoptable", "animal", "Adoptable")
+    dbo.execute_dbupdate("UPDATE animal SET Adoptable = 0")
+    # Add onlineform.EmailCoordinator
+    add_column(dbo, "onlineform", "EmailCoordinator", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE onlineform SET EmailCoordinator = 0")
+
+def update_34502(dbo):
+    # Replace HTML entities in the database with unicode code points now
+    # that they are no longer needed.
+    if dbo.locale not in ( "en", "en_GB", "en_AU" ):
+        replace_html_entities(dbo)
+
+def update_34503(dbo):
+    # add lkworktype.IsRetired
+    add_column(dbo, "lkworktype", "IsRetired", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE lkworktype SET IsRetired = 0")
+
+def update_34504(dbo):
+    # add onlineform.AutoProcess
+    add_column(dbo, "onlineform", "AutoProcess", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE onlineform SET AutoProcess=0")
+
+def update_34505(dbo):
+    # add extra row for Selective to good with
+    l = dbo.locale
+    dbo.execute_dbupdate("INSERT INTO lksynun VALUES (3, ?)", [ _("Selective", l) ])
+
+def update_34506(dbo):
+    # add customreport.Revision
+    add_column(dbo, "customreport", "Revision", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE customreport SET Revision=0")
+
+def update_34507(dbo):
+    # add costtype.AccountID, donationtype.AccountID
+    add_column(dbo, "costtype", "AccountID", dbo.type_integer)
+    add_column(dbo, "donationtype", "AccountID", dbo.type_integer)
+    # Copy the values from the redundant columns in accounts
+    for a in dbo.query("SELECT ID, CostTypeID, DonationTypeID FROM accounts"):
+        if a.COSTTYPEID is not None and a.COSTTYPEID > 0:
+            dbo.execute_dbupdate("UPDATE costtype SET AccountID=? WHERE ID=?", (a.ID, a.COSTTYPEID))
+        if a.DONATIONTYPEID is not None and a.DONATIONTYPEID > 0:
+            dbo.execute_dbupdate("UPDATE donationtype SET AccountID=? WHERE ID=?", (a.ID, a.DONATIONTYPEID))
+
+def update_34508(dbo):
+    # Replace old JQUI themes with light or dark
+    dbo.execute_dbupdate("UPDATE users SET ThemeOverride='asm' WHERE ThemeOverride IN ('base','cupertino'," \
+        "'dot-luv','excite-bike','flick','hot-sneaks','humanity','le-frog','overcast','pepper-grinder','redmond'," \
+        "'smoothness','south-street','start','sunny','swanky-purse','ui-lightness')")
+    dbo.execute_dbupdate("UPDATE users SET ThemeOverride='asm-dark' WHERE ThemeOverride IN ('black-tie','blitzer'," \
+        "'dark-hive','eggplant','mint-choc','trontastic','ui-darkness','vader')")
+
+def update_34509(dbo):
+    # This update broke MYSQL because Show is a reserved word. 
+    # it is superceded by update_34511
+    # add_column(dbo, "templatedocument", "Show", dbo.type_shorttext)
+    # dbo.execute_dbupdate("UPDATE templatedocument SET Show='everywhere'")
+    pass
+
+def update_34510(dbo):
+    add_column(dbo, "onlineform", "RetainFor", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE onlineform SET RetainFor=0")
+
+def update_34511(dbo):
+    add_column(dbo, "templatedocument", "ShowAt", dbo.type_shorttext)
+    dbo.execute_dbupdate("UPDATE templatedocument SET ShowAt='everywhere'")
+
+def update_34512(dbo):
+    add_column(dbo, "owner", "PopupWarning", dbo.type_longtext)
+    add_column(dbo, "owner", "IsDangerous", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE owner SET PopupWarning = '', IsDangerous = 0")
+
+def update_34600(dbo):
+    # Remove the old ASM2 report definitions as they break versioning on them if present
+    dbo.execute_dbupdate("DELETE FROM customreport WHERE SQLCommand LIKE '0%'")
+
+def update_34601(dbo):
+    # Add cost per treatment fields
+    add_column(dbo, "animalmedical", "CostPerTreatment", dbo.type_integer)
+    add_column(dbo, "medicalprofile", "CostPerTreatment", dbo.type_integer)
+    dbo.execute_dbupdate("UPDATE animalmedical SET CostPerTreatment=0")
+    dbo.execute_dbupdate("UPDATE medicalprofile SET CostPerTreatment=0")
+
+def update_34602(dbo):
+    # Add time fieldtype
+    l = dbo.locale
+    dbo.execute_dbupdate("INSERT INTO lksfieldtype (ID, FieldType) VALUES (10, ?)", [ _("Time", l) ])
+
+def update_34603(dbo):
+    l = dbo.locale
+    # create event tables
+    dbo.execute_dbupdate("CREATE TABLE event (ID %(int)s NOT NULL PRIMARY KEY, StartDateTime %(date)s, EndDateTime %(date)s, " \
+                       "EventName %(short)s NOT NULL, EventDescription %(long)s NOT NULL," \
+                       "RecordVersion %(int)s, CreatedBy %(short)s, CreatedDate %(date)s, LastChangedBy %(short)s, LastChangedDate %(date)s)" \
+                        % { "int": dbo.type_integer, "date": dbo.type_datetime, "short": dbo.type_shorttext, "long": dbo.type_longtext })
+    dbo.execute_dbupdate("CREATE TABLE eventanimal (ID %(int)s NOT NULL PRIMARY KEY, EventID %(int)s NOT NULL, AnimalID %(int)s NOT NULL, "\
+                       "ArrivalDate %(date)s, " \
+                       "RecordVersion %(int)s, CreatedBy %(short)s, CreatedDate %(date)s, LastChangedBy %(short)s, LastChangedDate %(date)s)" \
+                        % { "int": dbo.type_integer, "date": dbo.type_datetime, "short": dbo.type_shorttext })
+    add_index(dbo, "event_StartDateTime", "event", "StartDateTime")
+    add_index(dbo, "event_EndDateTime", "event", "EndDateTime")
+    add_index(dbo, "event_EventName", "event", "EventName")
+    add_index(dbo, "eventanimal_EventAnimalID", "eventanimal", "EventID,AnimalID", True)
+    add_index(dbo, "eventanimal_ArrivalDate", "eventanimal", "ArrivalDate")
+    # add events to the additional field links
+    dbo.execute_dbupdate("INSERT INTO lksfieldlink VALUES (21, '%s')" % _("Event - Details", l))
+
+def update_34604(dbo):
+    # add eventid column to movements
+    add_column(dbo, "adoption", "EventID", dbo.type_integer)
+    add_index(dbo, "adoption_EventID", "adoption", "EventID")
+
+def update_34605(dbo):
+    l = dbo.locale
+    # add sponsor flag column, and sponsor/vet as additional field types
+    add_column(dbo, "owner", "IsSponsor", dbo.type_integer)
+    add_index(dbo, "owner_IsSponsor", "owner", "IsSponsor")
+    dbo.execute_dbupdate("UPDATE owner SET IsSponsor=0")
+    dbo.execute_dbupdate("INSERT INTO lksfieldtype (ID, FieldType) VALUES (11, '" + _("Sponsor", l) + "')")
+    dbo.execute_dbupdate("INSERT INTO lksfieldtype (ID, FieldType) VALUES (12, '" + _("Vet", l) + "')")
+
+def update_34606(dbo):
+    # add location columns to event table
+    add_column(dbo, "event", "EventOwnerID", dbo.type_integer)
+    add_column(dbo, "event", "EventAddress", dbo.type_shorttext)
+    add_column(dbo, "event", "EventTown", dbo.type_shorttext)
+    add_column(dbo, "event", "EventCounty", dbo.type_shorttext)
+    add_column(dbo, "event", "EventPostCode", dbo.type_shorttext)
+    add_column(dbo, "event", "EventCountry", dbo.type_shorttext)
+    add_index(dbo, "event_EventOwnerID", "event", "EventOwnerID")
+    add_index(dbo, "event_EventAddress", "event", "EventAddress")
+
+def update_34607(dbo):
+    # add 2FA columns to users table
+    add_column(dbo, "users", "EnableTOTP", dbo.type_integer)
+    add_column(dbo, "users", "OTPSecret", dbo.type_shorttext)
+    dbo.execute_dbupdate("UPDATE users SET EnableTOTP=0, OTPSecret=''")
+
+def update_34608(dbo):
+    # change column eventownerid to nullable
+    dbo.execute_dbupdate(dbo.ddl_drop_notnull("event", "EventOwnerID", dbo.type_integer))

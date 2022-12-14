@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, additional, asm, common, config, controller, dlgfx, edit_header, format, header, html, mapping, tableform, validate */
 
 $(function() {
 
-    var person = {
+    "use strict";
+
+    const person = {
 
         render_dialogs: function() {
             return [
@@ -18,7 +19,7 @@ $(function() {
                 '</div>',
                 '<div id="dialog-merge" style="display: none" title="' + html.title(_("Select person to merge")) + '">',
                 '<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em">',
-                '<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
+                '<p><span class="ui-icon ui-icon-info"></span>',
                 _("Select a person to merge into this record. The selected person will be removed, and their movements, diary notes, log entries, etc. will be reattached to this record."),
                 '</p>',
                 '</div>',
@@ -32,7 +33,10 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</div>',
-                '<div id="emailform" />'
+                '<div id="emailform"></div>',
+                '<div id="dialog-popupwarning" style="display: none" title="' + html.title(_("Warning")) + '">',
+                '<p>' + html.error(controller.person.POPUPWARNING) + '</p>',
+                '</div>'
             ].join("\n");
         },
 
@@ -42,8 +46,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left table -->',
-                '<td width="35%">',
+                // left table
+                '<td width="35%" class="asm-nested-table-td">',
                 '<table class="additionaltarget" data="to7">',
                 '<tr>',
                 '<td><label for="code">' + _("Code") + '</label></td>',
@@ -89,7 +93,9 @@ $(function() {
                 '</tr>',
                 '<tr>',
                 '<td><label for="surname" class="tag-individual">' + _("Last name") + '</label>',
-                '<label for="surname" class="tag-organisation">' + _("Organization name") + '</label></td>',
+                '<label for="surname" class="tag-organisation">' + _("Organization name") + '</label>',
+                '<span class="asm-has-validation">*</span>',
+                '</td>',
                 '<td>',
                 '<input type="text" id="surname" data-json="OWNERSURNAME" data-post="surname" maxlength="100" class="asm-textbox" />',
                 '</td>',
@@ -97,19 +103,19 @@ $(function() {
                 '<tr>',
                 '<td><label for="hometelephone">' + _("Home Phone") + '</label></td>',
                 '<td>',
-                '<input type="text" id="hometelephone" data-json="HOMETELEPHONE" data-post="hometelephone" class="asm-textbox" />',
+                '<input type="text" id="hometelephone" data-json="HOMETELEPHONE" data-post="hometelephone" class="asm-textbox asm-phone" />',
                 '</td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="worktelephone">' + _("Work Phone") + '</label></td>',
                 '<td>',
-                '<input type="text" id="worktelephone" data-json="WORKTELEPHONE" data-post="worktelephone" class="asm-textbox" />',
+                '<input type="text" id="worktelephone" data-json="WORKTELEPHONE" data-post="worktelephone" class="asm-textbox asm-phone" />',
                 '</td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="mobiletelephone">' + _("Cell Phone") + '</label></td>',
                 '<td>',
-                '<input type="text" id="mobiletelephone" data-json="MOBILETELEPHONE" data-post="mobiletelephone" class="asm-textbox" />',
+                '<input type="text" id="mobiletelephone" data-json="MOBILETELEPHONE" data-post="mobiletelephone" class="asm-textbox asm-phone" />',
                 '</td>',
                 '</tr>',
                 '<tr>',
@@ -135,8 +141,8 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- right table -->',
-                '<td width="30%">',
+                // right table 
+                '<td width="30%" class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<tr>',
                 '<td><label for="address">' + _("Address") + '</label></td>',
@@ -153,7 +159,11 @@ $(function() {
                 '<tr class="towncounty">',
                 '<td><label for="county">' + _("State") + '</label></td>',
                 '<td>',
-                '<input type="text" id="county" data-json="OWNERCOUNTY" data-post="county" maxlength="100" class="asm-textbox" />',
+                common.iif(config.bool("USStateCodes"),
+                    '<select id="county" data-json="OWNERCOUNTY" data-post="county" class="asm-selectbox">' +
+                    html.states_us_options() + '</select>',
+                    '<input type="text" id="county" data-json="OWNERCOUNTY" data-post="county" maxlength="100" ' + 
+                    'class="asm-textbox" />'),
                 '</td>',
                 '</tr>',
                 '<tr>',
@@ -167,16 +177,18 @@ $(function() {
                 '<td><input class="asm-textbox newform" id="country" data-json="OWNERCOUNTRY" data-post="country" type="textbox" /></td>',
                 '</tr>',
                 '<tr id="latlongrow">',
-                '<td><label for="latlong">' + _("Latitude/Longitude") + '</label></td>',
+                '<td><label for="latlong">' + _("Latitude/Longitude"),
+                '<span class="asm-callout">' + _("Right-click on the map to change the marker location") + '</span>',
+                '</label></td>',
                 '<td><input type="text" class="asm-latlong" id="latlong" data-json="LATLONG" data-post="latlong" /></td>',
                 '</tr>',
-                '<!-- end right table -->',
+                // end right table
                 '</table>',
-                '<!-- Third column, embedded map placeholder -->',
+                // Third column, embedded map placeholder
                 '</td>',
-                '<td width="35%">',
-                '<div id="embeddedmap" style="z-index: 1; width: 100%; height: 300px; color: #000" />',
-                '<!-- end outer table -->',
+                '<td width="35%" class="asm-nested-table-td">',
+                '<div id="embeddedmap" style="z-index: 1; width: 100%; height: 300px; color: #000"></div>',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -188,11 +200,11 @@ $(function() {
             return [
                 '<h3><a href="#">' + _("Type") + '</a></h3>',
                 '<div>',
-                '<!-- Outer table -->',
+                // Outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td width="50%">',
-                '<!-- Left table -->',
+                '<td width="50%" class="asm-nested-table-td">',
+                // Left table
                 '<table class="additionaltarget" data="to8">',
                 '<tr>',
                 '<td><label for="flags">' + _("Flags") + '</label></td>',
@@ -225,13 +237,21 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<td>',
-                '<!-- Right table -->',
+                '<td class="asm-nested-table-td">',
+                // Right table
                 '<table width="100%">',
                 '<tr>',
-                '<td><label for="comments">' + _("Comments") + '</label</td>',
+                '<td><label for="comments">' + _("Comments") + '</label></td>',
                 '<td>',
-                '<textarea id="comments" title="' + _("Comments") + '" data-json="COMMENTS" data-post="comments" rows="10" class="asm-textarea"></textarea>',
+                '<textarea id="comments" title="' + _("Comments") + '" data-json="COMMENTS" data-post="comments" rows="7" class="asm-textarea"></textarea>',
+                '</td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="popupwarning">' + _("Warning") + '</label>',
+                '<span id="callout-popupwarning" class="asm-callout">' + _("Show a warning when viewing this person") + '</span>',
+                '</td>',
+                '<td>',
+                '<textarea id="popupwarning" title="' + _("Warning") + '" data-json="POPUPWARNING" data-post="popupwarning" rows="2" class="asm-textarea"></textarea>',
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -245,17 +265,17 @@ $(function() {
 
         render_homechecker: function() {
             return [
-                '<h3><a href="#">' + _("Homechecker") + '</a></h3>',
+                '<h3 id="accordion-homechecker"><a href="#">' + _("Homechecker") + '</a></h3>',
                 '<div>',
-                '<!-- outer table -->',
+                // outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td width="50%">',
+                '<td width="50%" class="asm-nested-table-td">',
                 '<p class="asm-header"><label for="areas">' + _("Homecheck Areas") + '</label></p>',
                 '<textarea id="areas" class="asm-textarea" data-json="HOMECHECKAREAS" data-post="areas" rows="8" title="' + html.title(_("A list of areas this person will homecheck - eg: S60 S61")) + '"></textarea>',
                 '</td>',
-                '<td width="50%" valign="top">',
-                '<!-- history table -->',
+                '<td width="50%" valign="top" class="asm-nested-table-td">',
+                // history table
                 '<p class="asm-header"><label>' + _("Homecheck History") + '</label></p>',
                 '<table id="homecheckhistory" width="100%">',
                 '<thead>',
@@ -268,7 +288,7 @@ $(function() {
                 '<tbody>',
                 '</tbody>',
                 '</table>',
-                '<!-- end outer table -->',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -278,12 +298,12 @@ $(function() {
 
         render_lookingfor: function() {
             return [
-                '<h3><a href="#">' + _("Looking for") + ' <span id="tabcriteria" style="display: none" class="asm-icon asm-icon-animal"></span></a></h3><div>',
-                '<!-- Outer table -->',
+                '<h3 id="accordion-lookingfor"><a href="#">' + _("Looking for") + ' <span id="tabcriteria" style="display: none" class="asm-icon asm-icon-animal"></span></a></h3><div>',
+                // Outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td>',
-                '<!-- left table -->',
+                '<td class="asm-nested-table-td">',
+                // left table
                 '<table>',
                 '<tr>',
                 '<td><label for="matchactive">' + _("Status") + '</label></td>',
@@ -318,8 +338,8 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<td>',
-                '<!-- right table -->',
+                '<td class="asm-nested-table-td">',
+                // right table
                 '<table>',
                 '<tr>',
                 '<td><label for="matchsex">' + _("Sex") + '</label></td>',
@@ -372,9 +392,9 @@ $(function() {
                 '</select></td>',
                 '</tr>',
                 '</table>',
-                '<!-- far right table -->',
+                // far right table
                 '</td>',
-                '<td>',
+                '<td class="asm-nested-table-td">',
                 '<table>',
                 '<tr>',
                 '<td><label for="matchgoodwithcats">' + _("Good with cats") + '</label></td>',
@@ -395,7 +415,7 @@ $(function() {
                 '<td><label for="matchgoodwithchildren">' + _("Good with children") + '</label></td>',
                 '<td><select id="matchgoodwithchildren" data-json="MATCHGOODWITHCHILDREN" data-post="matchgoodwithchildren" class="lfs asm-halftextbox selectbox">',
                 '<option value="-1">' + _("(any)") + '</option>',
-                html.list_to_options(controller.ynun, "ID", "NAME"),
+                html.list_to_options(controller.ynunk, "ID", "NAME"),
                 '</select></td>',
                 '</tr>',
                 '<tr>',
@@ -406,7 +426,7 @@ $(function() {
                 '</select></td>',
                 '</tr>',
                 '</table>',
-                '<!-- end outer table -->',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -492,10 +512,69 @@ $(function() {
                 $(".tag-individual").fadeIn();
             }
 
+            // if the member flag is selected and membership number is blank,
+            // default the membership number from the person id.
+            if ($("#flags option[value='member']").is(":selected")) {
+                if (common.trim($("#membershipnumber").val()) == "") {
+                    $("#membershipnumber").val( 
+                        format.padleft($("#personid").val(), 10));
+                }
+            }
+
+            if ($("#flags option[value='member']").is(":selected")) {
+                $("label[for='membershipnumber']").html(_("Membership Number"));
+                $("#membershipnumber").prop("title", _("If this person is a member, their membership number"));
+                $("#membershipnumber").closest("tr").fadeIn();
+                $("#membershipexpires").closest("tr").fadeIn();
+            }
+
+            // If the vet flag is selected, change the membership number label
+            // and hide the expiry field so we can use membership for licence
+            if ($("#flags option[value='vet']").is(":selected")) {
+                $("label[for='membershipnumber']").html(_("License Number"));
+                $("#membershipnumber").prop("title", _("The veterinary license number."));
+                $("#membershipnumber").closest("tr").fadeIn();
+                $("#membershipexpires").closest("tr").fadeOut();
+            }
+
+            // If neither member or vet flag is set, hide the membership number field
+            if (!$("#flags option[value='vet']").is(":selected") && !$("#flags option[value='member']").is(":selected")) {
+                $("#membershipnumber").closest("tr").fadeOut();
+                $("#membershipexpires").closest("tr").fadeOut();
+            }
+
+            // If the fosterer flag is set, show/hide the fosterer capacity field
+            if ($("#flags option[value='fosterer']").is(":selected")) {
+                $("#fostercapacity").closest("tr").fadeIn();
+            }
+            else {
+                $("#fostercapacity").closest("tr").fadeOut();
+            }
+
+            // If the homechecked flag is set, or the option is not on to
+            // hide them, show/hide the homechecked by/date fields
+            if ($("#flags option[value='homechecked']").is(":selected") || !config.bool("HideHomeCheckedNoFlag")) {
+                $("#homecheckedby").closest("tr").fadeIn();
+                $("#homechecked").closest("tr").fadeIn();
+            }
+            else {
+                $("#homecheckedby").closest("tr").fadeOut();
+                $("#homechecked").closest("tr").fadeOut();
+            }
+
+            // Hide the homechecker section if this person isn't a homechecker
+            if ($("#flags option[value='homechecker']").is(":selected")) {
+                $("#accordion-homechecker").show();
+            }
+            else {
+                $("#accordion-homechecker").hide();
+                $("#accordion-homechecker").next().hide();
+            }
+
             // Hide additional accordion section if there aren't
             // any additional fields declared
-            var ac = $("#asm-additional-accordion");
-            var an = ac.next();
+            let ac = $("#asm-additional-accordion");
+            let an = ac.next();
             if (an.find(".additional").length == 0) {
                 ac.hide(); an.hide();
             }
@@ -508,6 +587,11 @@ $(function() {
             $("#jurisdictionrow").toggle( !config.bool("DisableAnimalControl") );
             $("#button-anonymise").toggle( config.bool("AnonymisePersonalData") );
             $("#gdprcontactoptinrow").toggle( config.bool("ShowGDPRContactOptIn") );
+            $("#button-lookingfor").toggle( !config.bool("HideLookingFor") );
+            if (config.bool("HideLookingFor")) {
+                $("#accordion-lookingfor").hide();
+                $("#accordion-lookingfor").next().hide();
+            }
 
             // SECURITY =============================================================
             if (!common.has_permission("co")) { $("#button-save, #button-anonymise").hide(); }
@@ -527,7 +611,7 @@ $(function() {
             validate.reset();
 
             // name
-            if ($.trim($("#surname").val()) == "") {
+            if (common.trim($("#surname").val()) == "") {
                 header.show_error(_("Name cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("surname");
@@ -535,8 +619,10 @@ $(function() {
             }
 
             // email
-            if ($.trim($("#email").val()) != "") {
+            if (common.trim($("#email").val()) != "") {
                 if (!validate.email($("#email").val())) {
+                    header.show_error(_("Invalid email address '{0}'").replace("{0}", $("#email").val()));
+                    validate.highlight("email");
                     return false;
                 }
             }
@@ -550,11 +636,11 @@ $(function() {
         },
 
         get_map_url: function() {
-            var add = $("#address").val().replace("\n", ",");
-            var town = $("#town").val();
-            var county = $("#county").val();
-            var postcode = $("#postcode").val();
-            var map = add;
+            let add = $("#address").val().replace("\n", ",");
+            let town = $("#town").val();
+            let county = $("#county").val();
+            let postcode = $("#postcode").val();
+            let map = add;
             if (town != "") { map += "," + town; }
             if (county != "") { map += "," + county; }
             if (postcode != "") { map += "," + postcode; }
@@ -567,6 +653,12 @@ $(function() {
                 mapping.draw_map("embeddedmap", 15, controller.person.LATLONG, [{ 
                     latlong: controller.person.LATLONG, popuptext: controller.person.OWNERADDRESS, popupactive: true }]);
             }, 50);
+        },
+
+        show_popup_warning: async function() {
+            if (controller.person.POPUPWARNING) {
+                await tableform.show_okcancel_dialog("#dialog-popupwarning", _("Ok"), { hidecancel: true });
+            }
         },
 
         bind: function() {
@@ -583,38 +675,34 @@ $(function() {
             // Email dialog for sending emails
             $("#emailform").emailform();
 
-            $("#town").autocomplete({ source: controller.towns.split("|") });
-            $("#county").autocomplete({ source: controller.counties.split("|") });
+            if (!config.bool("USStateCodes")) {
+                $("#county").autocomplete({ source: controller.counties, minLength: 3 });
+            }
+            $("#town").autocomplete({ source: controller.towns, minLength: 4 });
             $("#town").blur(function() {
                 if ($("#county").val() == "") {
-                    var tc = html.decode(controller.towncounties);
-                    var idx = tc.indexOf($("#town").val() + "^");
-                    if (idx != -1) {
-                        $("#county").val(tc.substring(tc.indexOf("^^", idx) + 2, tc.indexOf("|", idx)));
-                    }
+                    $("#county").val(controller.towncounties[$("#town").val()]);
                 }
             });
 
             additional.relocate_fields();
 
             // Diary task create ajax call
-            var create_task = function(taskid) {
-                var formdata = "mode=exec&id=" + $("#personid").val() + "&tasktype=PERSON&taskid=" + taskid + "&seldate=" + $("#seldate").val();
-                common.ajax_post("diarytask", formdata)
-                    .then(function() { 
-                        if (validate.unsaved) {
-                            validate.save(function() {
-                                common.route("person_diary?id=" + controller.person.ID);
-                            });
-                        }
-                        else {
-                            common.route("person_diary?id=" + controller.person.ID);
-                        }
+            const create_task = async function(taskid) {
+                let formdata = "mode=exec&id=" + $("#personid").val() + "&tasktype=PERSON&taskid=" + taskid + "&seldate=" + $("#seldate").val();
+                await common.ajax_post("diarytask", formdata);
+                if (validate.unsaved) {
+                    validate.save(function() {
+                        common.route("person_diary?id=" + controller.person.ID);
                     });
+                }
+                else {
+                    common.route("person_diary?id=" + controller.person.ID);
+                }
             };
 
             // Diary task select date dialog
-            var addbuttons = { };
+            let addbuttons = { };
             addbuttons[_("Select")] = function() {
                 validate.reset();
                 if (validate.notblank([ "seldate" ])) {
@@ -636,11 +724,11 @@ $(function() {
 
             // Attach handlers for diary tasks
             $(".diarytask").each(function() {
-                var a = $(this);
-                var task = a.attr("data").split(" ");
-                var taskmode = task[0];
-                var taskid = task[1];
-                var taskneeddate = task[2];
+                let a = $(this);
+                let task = a.attr("data").split(" ");
+                let taskmode = task[0];
+                let taskid = task[1];
+                let taskneeddate = task[2];
                 $(this).click(function() {
                     $("#seldate").val("");
                     // If the task needs a date, prompt for it
@@ -656,74 +744,15 @@ $(function() {
                 });
             });
 
-            var set_membership_flag = function() {
-                // Called when the membership number field is changed - if it has something
-                // in it, then set the member flag (only for non-vets)
-                if ($("#membershipnumber").val() != "" && !$("#flags option[value='vet']").is(":selected")) {
-                    $("#flags option[value='member']").prop("selected", "selected");
-                    $("#flags").change();
-                }
-            };
-
-            var set_homechecked_flag = function() {
-                if (config.bool("DontDefaultHomechecked")) { return; }
-                $("#flags option[value='homechecked']").prop("selected", "selected");
-                $("#flags").change();
-            };
-
-            var set_fosterer_flag = function() {
-                if (format.to_int($("#fostercapacity").val())) {
-                    $("#flags option[value='fosterer']").prop("selected", "selected");
-                    $("#flags").change();
-                }
-            };
-
-            $("#homecheckedby").personchooser().bind("personchooserchange", function(event, rec) {
-                set_homechecked_flag();
-            });
-
             // Controls that update the screen when changed
             $("#ownertype").change(person.enable_widgets);
             $("#matchactive").change(person.enable_widgets);
-            $("#homechecked").keyup(set_homechecked_flag);
-            $("#homechecked").change(set_homechecked_flag);
-            $("#membershipnumber").keyup(set_membership_flag).change(set_membership_flag);
-            $("#membershipexpires").change(set_membership_flag);
-            $("#fostercapacity").keyup(set_fosterer_flag).change(set_fosterer_flag);
-
-            $("#flags").change(function() {
-                // if the member flag is selected and membership number is blank,
-                // default the membership number from the person id.
-                if ($("#flags option[value='member']").is(":selected")) {
-                    if ($.trim($("#membershipnumber").val()) == "") {
-                        $("#membershipnumber").val( 
-                            format.padleft($("#personid").val(), 10));
-                    }
-                }
-
-                // If the vet flag is selected, change the membership number label
-                // and hide the expiry field so we can use membership for licence
-                if ($("#flags option[value='vet']").is(":selected")) {
-                    $("label[for='membershipnumber']").html(_("License Number"));
-                    $("#membershipnumber").attr("title", _("The veterinary license number."));
-                    $("#membershipexpires").closest("tr").fadeOut();
-                    $("#homecheckedby").closest("tr").fadeOut();
-                    $("#homechecked").closest("tr").fadeOut();
-                }
-                else {
-                    $("label[for='membershipnumber']").html(_("Membership Number"));
-                    $("#membershipnumber").attr("title", _("If this person is a member, their membership number"));
-                    $("#membershipexpires").closest("tr").fadeIn();
-                    $("#homecheckedby").closest("tr").fadeIn();
-                    $("#homechecked").closest("tr").fadeIn();
-                }
-
-            });
+            $("#flags").change(person.enable_widgets);
 
             validate.save = function(callback) {
                 if (!person.validation()) { header.hide_loading(); return; }
                 validate.dirty(false);
-                var formdata = "mode=save" +
+                let formdata = "mode=save" +
                     "&id=" + $("#personid").val() + 
                     "&recordversion=" + controller.person.RECORDVERSION + 
                     "&" + $("input, select, textarea").not(".chooser").toPOST();
@@ -748,28 +777,22 @@ $(function() {
                 validate.dirty(true);
             });
 
-            $("#button-delete").button().click(function() {
-                tableform.delete_dialog(null, _("This will permanently remove this person, are you sure?"))
-                    .then(function() {
-                        var formdata = "mode=delete&personid=" + $("#personid").val();
-                        return common.ajax_post("person", formdata);
-                    })
-                    .then(function() { 
-                        validate.dirty(false);
-                        common.route("main"); 
-                    });
+            $("#button-delete").button().click(async function() {
+                await tableform.delete_dialog(null, _("This will permanently remove this person, are you sure?"));
+                let formdata = "mode=delete&personid=" + $("#personid").val();
+                await common.ajax_post("person", formdata);
+                validate.dirty(false);
+                common.route("main"); 
             });
 
             $("#button-merge").button().click(function() {
-                var mb = {}; 
-                mb[_("Merge")] = function() { 
+                let mb = {}; 
+                mb[_("Merge")] = async function() { 
                     $("#dialog-merge").dialog("close");
-                    var formdata = "mode=merge&personid=" + $("#personid").val() + "&mergepersonid=" + $("#mergeperson").val();
-                    common.ajax_post("person", formdata)
-                        .then(function() { 
-                            validate.dirty(false);
-                            common.route_reload(); 
-                        });
+                    let formdata = "mode=merge&personid=" + $("#personid").val() + "&mergepersonid=" + $("#mergeperson").val();
+                    await common.ajax_post("person", formdata);
+                    validate.dirty(false);
+                    common.route_reload(); 
                 };
                 mb[_("Cancel")] = function() { $(this).dialog("close"); };
                 $("#dialog-merge").dialog({
@@ -795,7 +818,9 @@ $(function() {
                     formdata: "mode=email&personid=" + $("#personid").val(),
                     name: $("#forenames").val() + " " + $("#surname").val(),
                     email: $("#email").val(),
-                    logtypes: controller.logtypes
+                    logtypes: controller.logtypes,
+                    personid: controller.person.ID,
+                    templates: controller.templates
                 });
             });
 
@@ -816,7 +841,7 @@ $(function() {
             html.person_flag_options(controller.person, controller.flags, $("#flags"));
 
             // Load homecheck history
-            var h = [];
+            let h = [];
             $.each(controller.homecheckhistory, function(i, v) {
                 h.push("<tr>");
                 h.push('<td class="centered">' + format.date(v.DATELASTHOMECHECKED) + '</td>');
@@ -831,8 +856,8 @@ $(function() {
 
             // Map button
             $("#button-map").button().click(function() {
-                var mapq = person.get_map_url();
-                var maplinkref = String(asm.maplink).replace("{0}", mapq);
+                let mapq = person.get_map_url();
+                let maplinkref = String(asm.maplink).replace("{0}", mapq);
                 window.open(maplinkref, "_blank");
             });
 
@@ -842,12 +867,17 @@ $(function() {
 
             // Dirty handling
             validate.bind_dirty([ "person_" ]);
+
+            // If a popup warning has been set, display it
+            person.show_popup_warning();
+
         },
 
         destroy: function() {
             validate.unbind_dirty();
             common.widget_destroy("#dialog-dt-date");
             common.widget_destroy("#dialog-merge");
+            common.widget_destroy("#dialog-popupwarning");
             common.widget_destroy("#emailform");
             common.widget_destroy("#mergeperson", "personchooser");
             common.widget_destroy("#homecheckedby", "personchooser");
@@ -866,4 +896,3 @@ $(function() {
     common.module_register(person);
 
 });
-

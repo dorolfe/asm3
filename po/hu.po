@@ -1,9 +1,4 @@
-# Hungarian translation for sheltermanager
-# Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
-# This file is distributed under the same license as the sheltermanager package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2010.
-# Robin Rawson-Tetley <zanata@sheltermanager.com>, 2016. #zanata
-# Bolevácz Elisabeth <bolevaczbetti@gmail.com>, 2017. #zanata
+
 msgid ""
 msgstr ""
 "Project-Id-Version: ASM3\n"
@@ -18,8 +13,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 2.2.3\n"
-"X-Launchpad-Export-Date: 2015-03-02 05:17+0000\n"
-"X-POOTLE-MTIME: 1466765102.000000\n"
+
 
 #: options.js
 msgid " days."
@@ -3399,7 +3393,7 @@ msgstr "A kódok és rövidített kódok alapértelmezett formátumai TYYYYNNN �
 #: transport.js onlineform_incoming.js common_tableform.js vaccination.js
 #: medicalprofile.js common.js
 msgid "Delete"
-msgstr "Törlés"
+msgstr "Töröl"
 
 #: roles.js
 msgid "Delete Accounts"
@@ -5361,7 +5355,7 @@ msgstr "Ugrás"
 
 #: main.js
 msgid ""
-"Go the lookup data screen and add/remove breeds, species and animal types "
+"Go to the lookup data screen and add/remove breeds, species and animal types "
 "according to the animals your shelter deals with."
 msgstr ""
 "Ugrás az ellenőrző adattáblába és fajták, fajok és állat típusok hozzáadása/"
@@ -5369,14 +5363,14 @@ msgstr ""
 
 #: main.js
 msgid ""
-"Go the options screen and set your shelter's contact details and other "
+"Go to the options screen and set your shelter's contact details and other "
 "settings."
 msgstr ""
 "Ugrás az opciókra és a menhely kapcsolatainak és egyéb beállításainak "
 "beállítása"
 
 #: main.js
-msgid "Go the system users screen and add user accounts for your staff."
+msgid "Go to the system users screen and add user accounts for your staff."
 msgstr ""
 "Ugrás a rendszer felhasználói képernyőre és a személyzet fiókjainak "
 "hozzáadása"

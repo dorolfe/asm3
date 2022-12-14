@@ -49,6 +49,9 @@ class AKCReunitePublisher(AbstractPublisher):
         orgcounty = asm3.configuration.organisation_county(self.dbo)
         orgpostcode = asm3.configuration.organisation_postcode(self.dbo)
 
+        if asm3.configuration.akc_register_all(self.dbo):
+            self.microchipPatterns = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
         animals = get_microchip_data(self.dbo, self.microchipPatterns, self.publisherKey)
         if len(animals) == 0:
             self.setLastError("No animals found to publish.")
@@ -100,7 +103,6 @@ class AKCReunitePublisher(AbstractPublisher):
                         # Mark success in the log
                         self.logSuccess("Processed: %s: %s (%d of %d)" % ( an["SHELTERCODE"], an["ANIMALNAME"], anCount, len(animals)))
                         wassuccess = True
-                        break
 
                     # If we got a sender not recognised message, there's no point sending 
                     # anything else as they will all trigger the same error
@@ -108,6 +110,12 @@ class AKCReunitePublisher(AbstractPublisher):
                         self.logError("received 54101 'sender not recognized' response - abandoning run and disabling publisher")
                         asm3.configuration.publishers_enabled_disable(self.dbo, "ak")
                         break
+
+                    # Temporary or data errors - do nothing so we try again next time
+                    # 54103 = Data failed validation
+                    # 54107 = Database unavailable, try later
+                    if jr["responseCode"] == 54103 or jr["responseCode"] == 54107:
+                        continue
                     
                     if not wassuccess:
                         self.logError("no successful 54000, 54100, 54108 response received")
@@ -135,6 +143,8 @@ class AKCReunitePublisher(AbstractPublisher):
 
     def processAnimal(self, an, enrollmentsourceid="", orgname="", orgtel="", orgemail="", orgaddress="", orgtown="", orgcounty="", orgpostcode=""):
         """ Returns a JSON document from an animal """
+        reccountry = an.CURRENTOWNERCOUNTRY
+        if reccountry is None or reccountry == "": reccountry = "USA"
         o = {
             "enrollmentSourceId": enrollmentsourceid,
             "pet": {
@@ -144,7 +154,7 @@ class AKCReunitePublisher(AbstractPublisher):
                 "colorMarkings": an.MARKINGS,
                 "genderCode":   an.SEXNAME[0:1],
                 "spayedNeutered": an.NEUTERED == 1,
-                "birthDate":    asm3.i18n.format_date("%m-%d-%Y", an.DATEOFBIRTH),
+                "birthDate":    asm3.i18n.format_date(an.DATEOFBIRTH, "%m-%d-%Y"),
             },
             "primaryContact": {
                 "firstName":    an.CURRENTOWNERFORENAMES,
@@ -152,7 +162,7 @@ class AKCReunitePublisher(AbstractPublisher):
                 "phone": {
                     "number":   an.CURRENTOWNERMOBILETELEPHONE or an.CURRENTOWNERHOMETELEPHONE or an.CURRENTOWNERWORKTELEPHONE,
                     "extension": "",
-                    "country":  "USA"
+                    "country":  reccountry
                 },
                 "emailAddress": an.CURRENTOWNEREMAILADDRESS,
                 "emailOptIn":   True,
@@ -162,7 +172,7 @@ class AKCReunitePublisher(AbstractPublisher):
                     "city":     an.CURRENTOWNERTOWN,
                     "stateProvince": an.CURRENTOWNERCOUNTY,
                     "postalCode": an.CURRENTOWNERPOSTCODE,
-                    "country":  "USA"
+                    "country":  reccountry
                 },
                 "mailOptIn":    False
             },

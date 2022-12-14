@@ -1,15 +1,16 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, edit_header, format, header, html, tableform, validate */
 
 $(function() {
 
-    var waitinglist = {
+    "use strict";
+
+    const waitinglist = {
 
         current_person: null,
 
         render: function() {
             return [
-                '<div id="emailform" />',
+                '<div id="emailform"></div>',
                 '<div id="button-document-body" class="asm-menu-body">',
                 '<ul class="asm-menu-list">',
                 edit_header.template_list(controller.templates, "WAITINGLIST", controller.animal.ID),
@@ -28,8 +29,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left column -->',
-                '<td>',
+                // left column
+                '<td class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<tr>',
                 '<td>' + _("Number") + '</td>',
@@ -75,8 +76,8 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<!-- right column -->',
-                '<td>',
+                // right column 
+                '<td class="asm-nested-table-td">',
                 '<table width="100%" class="additionaltarget" data="to14">',
                 '<tr>',
                 '<td><label for="canafforddonation">' + _("Can afford donation?") + '</label></td>',
@@ -148,8 +149,8 @@ $(function() {
         enable_widgets: function() {
             // Hide additional accordion section if there aren't
             // any additional fields declared
-            var ac = $("#asm-additional-accordion");
-            var an = ac.next();
+            let ac = $("#asm-additional-accordion");
+            let an = ac.next();
             if (an.find(".additional").length == 0) {
                 ac.hide(); an.hide();
             }
@@ -167,7 +168,7 @@ $(function() {
             validate.reset();
 
             // owner
-            if ($.trim($("#owner").val()) == "0") {
+            if (common.trim($("#owner").val()) == "0") {
                 header.show_error(_("Waiting list entries must have a contact"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("owner");
@@ -175,7 +176,7 @@ $(function() {
             }
 
             // date put on list
-            if ($.trim($("#dateputon").val()) == "") {
+            if (common.trim($("#dateputon").val()) == "") {
                 header.show_error(_("Date put on cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 3);
                 validate.highlight("dateputon");
@@ -183,7 +184,7 @@ $(function() {
             }
 
             // description
-            if ($.trim($("#description").val()) == "") {
+            if (common.trim($("#description").val()) == "") {
                 header.show_error(_("Description cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("description");
@@ -211,7 +212,7 @@ $(function() {
             validate.save = function(callback) {
                 if (!waitinglist.validation()) { header.hide_loading(); return; }
                 validate.dirty(false);
-                var formdata = "mode=save" +
+                let formdata = "mode=save" +
                     "&id=" + $("#waitinglistid").val() + 
                     "&recordversion=" + controller.animal.RECORDVERSION + 
                     "&" + $("input, select, textarea").toPOST();
@@ -247,28 +248,24 @@ $(function() {
                     formdata: "mode=email&wlid=" + $("#waitinglistid").val(),
                     name: waitinglist.current_person.OWNERFORENAMES + " " + waitinglist.current_person.OWNERSURNAME,
                     email: waitinglist.current_person.EMAILADDRESS,
-                    logtypes: controller.logtypes
+                    logtypes: controller.logtypes,
+                    personid: controller.animal.OWNERID,
+                    templates: controller.templatesemail
                 });
             });
 
-            $("#button-toanimal").button().click(function() {
+            $("#button-toanimal").button().click(async function() {
                 $("#button-toanimal").button("disable");
-                var formdata = "mode=toanimal&id=" + $("#waitinglistid").val();
-                common.ajax_post("waitinglist", formdata)
-                    .then(function(result) { 
-                        common.route("animal?id=" + result); 
-                    });
+                let formdata = "mode=toanimal&id=" + $("#waitinglistid").val();
+                let result = await common.ajax_post("waitinglist", formdata);
+                common.route("animal?id=" + result); 
             });
 
-            $("#button-delete").button().click(function() {
-                tableform.delete_dialog(null, _("This will permanently remove this waiting list entry, are you sure?"))
-                    .then(function() {
-                        var formdata = "mode=delete&id=" + $("#waitinglistid").val();
-                        return common.ajax_post("waitinglist", formdata);
-                    })
-                    .then(function() { 
-                        common.route("main");
-                    });
+            $("#button-delete").button().click(async function() {
+                await tableform.delete_dialog(null, _("This will permanently remove this waiting list entry, are you sure?"));
+                let formdata = "mode=delete&id=" + $("#waitinglistid").val();
+                await common.ajax_post("waitinglist", formdata);
+                common.route("main");
             });
 
             additional.relocate_fields();
@@ -288,6 +285,7 @@ $(function() {
 
             // Dirty handling
             validate.bind_dirty([ "waitinglist_" ]);
+            validate.indicator([ "owner", "dateputon", "description" ]);
 
         },
 

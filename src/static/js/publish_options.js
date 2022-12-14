@@ -1,28 +1,31 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, validate */
 
 $(function() {
 
-    var publish_options = {
+    "use strict";
+
+    const publish_options = {
 
         render_tabs: function() {
             return [
                 '<ul>',
                 '<li><a href="#tab-animalselection">' + _("Animal Selection") + '</a></li>',
                 '<li><a href="#tab-allpublishers">' + _("All Publishers") + '</a></li>',
-                '<li><a href="#tab-htmlftp">' + _("HTML/FTP Publisher") + '</a></li>',
-                '<li class="localeus localeca localemx"><a href="#tab-adoptapet">AdoptAPet Publisher</a></li>',
-                '<li><a href="#tab-helpinglostpets">HelpingLostPets Publisher</a></li>',
-                '<li class="localeus localeca localeau hasmaddiesfund"><a href="#tab-maddiesfund">Maddie\'s Fund Publisher</a></li>',
-                '<li class="localeus localeca localemx"><a href="#tab-petfinder">PetFinder Publisher</a></li>',
-                '<li class="localegb haspetslocated"><a href="#tab-petslocated">PetsLocated Publisher</a></li>',
-                '<li class="localeau haspetrescue"><a href="#tab-petrescue">PetRescue Publisher</a></li>', 
-                '<li class="localeau hassavourlife"><a href="#tab-savourlife">SavourLife Publisher</a></li>', 
-                '<li class="localeus"><a href="#tab-rescuegroups">RescueGroups Publisher</a></li>',
+                '<li class="hashtmlftp"><a href="#tab-htmlftp">' + _("HTML/FTP Publisher") + '</a></li>',
+                '<li class="localeus localeca localemx"><a href="#tab-adoptapet">AdoptAPet</a></li>',
+                '<li><a href="#tab-helpinglostpets">HelpingLostPets</a></li>',
+                '<li class="english hasmaddiesfund"><a href="#tab-maddiesfund">Maddie\'s Fund</a></li>',
+                '<li class="english haspetcademy"><a href="#tab-petcademy">Petcademy</a></li>',
+                '<li class="localeus localeca localemx"><a href="#tab-petfinder">PetFinder</a></li>',
+                '<li class="localegb haspetslocated"><a href="#tab-petslocated">PetsLocated</a></li>',
+                '<li class="localeau haspetrescue"><a href="#tab-petrescue">PetRescue</a></li>', 
+                '<li class="localeau hassavourlife"><a href="#tab-savourlife">SavourLife</a></li>', 
+                '<li class="localeus"><a href="#tab-rescuegroups">RescueGroups</a></li>',
+                '<li class="localeus hassac"><a href="#tab-sac">ShelterAnimalsCount</a></li>',
                 '<li class="localegb"><a href="#tab-pettrac">AVID UK Microchips</a></li>',
                 '<li class="localegb"><a href="#tab-anibase">Identibase UK Microchips</a></li>',
                 '<li class="localeus hasakcreunite"><a href="#tab-akcreunite">AKC Reunite Microchips</a></li>',
-                '<li class="localeus hasfoundanimals"><a href="#tab-foundanimals">FoundAnimals Microchips</a></li>',
+                '<li class="localeus hasfoundanimals"><a href="#tab-foundanimals">FoundAnimals/24Pet Microchips</a></li>',
                 '<li class="localeus hashomeagain"><a href="#tab-homeagain">HomeAgain Microchips</a></li>',
                 '<li class="localeus localeca localemx haspetlink"><a href="#tab-petlink">PetLink Microchips</a></li>',
                 '<li class="localeus hassmarttag"><a href="#tab-smarttag">SmartTag Tags/Microchips</a></li>',
@@ -45,6 +48,13 @@ $(function() {
                 '<tr>',
                 '<td><label for="nonneutered">' + _("Include unaltered animals") + '</label></td>',
                 '<td><select id="nonneutered" class="asm-selectbox pbool preset" data="includenonneutered">',
+                '<option value="0">' + _("No") + '</option>',
+                '<option value="1">' + _("Yes") + '</option>',
+                '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="nonmicrochip">' + _("Include non-microchipped animals") + '</label></td>',
+                '<td><select id="nonmicrochip" class="asm-selectbox pbool preset" data="includenonmicrochip">',
                 '<option value="0">' + _("No") + '</option>',
                 '<option value="1">' + _("Yes") + '</option>',
                 '</select></td>',
@@ -114,33 +124,18 @@ $(function() {
                 '</tr>',
                 '<tr>',
                 '<td><label for="excludeunder">' + _("Exclude animals who are aged under") + '</label></td>',
-                '<td><select id="excludeunder" class="asm-selectbox preset" data="excludeunder">',
-                '<option value="1">' + _("1 week") + '</option>',
-                '<option value="2">' + _("2 weeks") + '</option>',
-                '<option value="4">' + _("4 weeks") + '</option>',
-                '<option value="6">' + _("6 weeks") + '</option>',
-                '<option value="8">' + _("8 weeks") + '</option>',
-                '<option value="12">' + _("3 months") + '</option>',
-                '<option value="26">' + _("6 months") + '</option>',
-                '<option value="38">' + _("9 months") + '</option>',
-                '<option value="52">' + _("1 year") + '</option>',
-                '</select></td>',
+                '<td><input id="excludeunder" class="asm-numberbox asm-textbox asm-halftextbox preset" data="excludeunder" data-max="52" data-min="1" />',
+                _("weeks") + '</td>',
                 '</tr>',
                 '<tr>',
-                '<td><label for="locations">' + _("Include animals in the following locations") + '</label></td>',
+                '<td><label for="locations">' + _("Include animals in the following locations"),
+                '<span id="callout-locations" class="asm-callout">',
+                _("If you don't select any locations, publishers will include animals in all locations."),
+                '</span>',
+                '</label></td>',
                 '<td><select id="locations" class="asm-bsmselect preset" multiple="multiple" data="includelocations">',
                 html.list_to_options(controller.locations, "ID", "LOCATIONNAME"),
                 '</select></td>',
-                '</tr>',
-                '<tr>',
-                '<td></td>',
-                '<td>',
-                '<div class="ui-state-highlight ui-corner-all" style="padding: 0 .7em;">',
-                '<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
-                _("If you don't select any locations, publishers will include animals in all locations."),
-                '</p>',
-                '</div>',
-                '</td>',
                 '</tr>',
                 '</table>',
                 '</div>'
@@ -161,6 +156,24 @@ $(function() {
                 '<option value="5">' + _("Reclaim") + '</option>',
                 '<option value="11">' + _("Trial Adoption") + '</option>',
                 '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="regfrom">' + _("Register microchips from") + '</label>',
+                '<span id="callout-regfrom" class="asm-callout">' + _("Only register microchips where the animal moved after this date") + '</span>',
+                '</td>',
+                '<td><input id="regfrom" class="asm-textbox asm-datebox cfg" data="MicrochipRegisterFrom" /></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="updatefreq">' + _("Update adoption websites every") + '</label></td>',
+                '<td><select id="updatefreq" class="asm-selectbox cfg" data="PublisherSub24Frequency">',
+                '<option value="2">' + _("{0} hours").replace("{0}", "2") + '</option>',
+                '<option value="4">' + _("{0} hours").replace("{0}", "4") + '</option>',
+                '<option value="6">' + _("{0} hours").replace("{0}", "6") + '</option>',
+                '<option value="8">' + _("{0} hours").replace("{0}", "8") + '</option>',
+                '<option value="12">' + _("{0} hours").replace("{0}", "12") + '</option>',
+                '<option value="0">' + _("{0} hours").replace("{0}", "24") + '</option>',
+                '</select>',
+                '</td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="forcereupload">' + _("Reupload animal images every time") + '</label></td>',
@@ -185,6 +198,15 @@ $(function() {
                 '<option value="2">' + _("Animal Name") + '</option>',
                 '</select></td>',
                 '</tr>',
+                '<tr>',
+                '<td><label for="thumbnailsize">' + _("Thumbnail size") + '</label></td>',
+                '<td><select id="thumbnailsize" class="asm-selectbox cfg" data="ThumbnailSize">',
+                '<option value="100x100">100px</option>',
+                '<option value="150x150">150px</option>',
+                '<option value="200x200">200px</option>',
+                '<option value="250x250">250px</option>',
+                '<option value="300x300">300px</option>',
+                '</select>',
                 '<tr>',
                 '<td><label for="usecomments">' + _("Animal descriptions") + '</label></td>',
                 '<td><select id="usecomments" class="asm-selectbox cfg" data="PublisherUseComments">',
@@ -466,9 +488,6 @@ $(function() {
                 '<td><label for="publishdir">' + _("Publish to folder") + '</label></td>',
                 '<td><input id="publishdir" type="text" class="asm-textbox preset" data="publishdirectory" /></td>',
                 '</tr>',
-                '<tr id="publishdiroverride" style="display: none">',
-                '<td>' + _("Publish to folder") + '</td>',
-                '<td><a href="#"></a></td>',
                 '</table>',
                 '</td>',
                 '<td>',
@@ -525,6 +544,20 @@ $(function() {
                 '<td><label for="pfftppass">PetFinder FTP password</label></td>',
                 '<td><input id="pfftppass" type="text" class="asm-textbox cfg" data="PetFinderFTPPassword" /></td>',
                 '</tr>',
+                '<tr>',
+                '<td><label for="pfsendstrays">"Stray" entry category shelter animals</label></td>',
+                '<td><select id="pfsendstrays" data="PetFinderSendStrays" class="asm-selectbox cfg">',
+                '<option value="No">Do not send</option>',
+                '<option value="Yes">Send with status "F"</option>',
+                '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="pfsendholds">Held shelter animals</label></td>',
+                '<td><select id="pfsendholds" data="PetFinderSendHolds" class="asm-selectbox cfg">',
+                '<option value="No">Do not send</option>',
+                '<option value="Yes">Send with status "H"</option>',
+                '</select></td>',
+                '</tr>',
                 '</table>',
                 html.info('Make sure to notify the PetFinder helpdesk that you are using ASM to upload animals so that they can give you your FTP password.<br/>' +
                     'It is <b>not</b> the same as your password for the members area.'),
@@ -551,6 +584,18 @@ $(function() {
                 '<td><select id="prdesex" class="asm-selectbox cfg" data="PetRescueAllDesexed">',
                 '<option>No</option><option>Yes</option></select></td>',
                 '</tr>',
+                /*
+                 * No longer needed - PetRescue have an option to hide the microchip numbers
+                '<tr>',
+                '<td><label for="prmicrochips">Send microchip numbers for all animals</label>',
+                '<span id="callout-prmicrochips" class="asm-callout">',
+                'By default we only send microchip numbers for animals listed in a VIC or NSW postcode. Settings this to "Yes" will send the microchip number for all animals',
+                '</span>',
+                '</td>',
+                '<td><select id="prmicrochips" class="asm-selectbox cfg" data="PetRescueAllMicrochips">',
+                '<option>No</option><option>Yes</option></select></td>',
+                '</tr>',
+                */
                 '<tr>',
                 '<td><label for="pradoptablein">Adoptable in states</label>',
                 '<span id="callout-printerstate" class="asm-callout">',
@@ -572,10 +617,51 @@ $(function() {
                 '<tr>',
                 '<td><label for="premail">Contact email</label>',
                 '<span id="callout-premail" class="asm-callout">',
-                'This is the contact email for PetRescue listings. If you do not set it, the option from Settings -&gt; Options -&gt; Email is used.',
+                'This is the contact email for PetRescue listings. If you do not set it, the option from Settings &#8594; Options &#8594; Email is used.',
                 '</span>',
                 '</td>',
                 '<td><input id="premail" type="text" class="asm-textbox cfg" data="PetRescueEmail" /></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="prphone">Contact phone</label>',
+                '<span id="callout-prphone" class="asm-callout">',
+                'This controls the phone number included as a secondary contact with your listings',
+                '</span></td>',
+                '<td><select id="prphone" class="asm-selectbox cfg" data="PetRescuePhoneType">',
+                '<option value="org">Use organisation number</option>',
+                '<option value="spec">Specify a number &#8594;</option>',
+                '<option value="none">Do not send a number</option>',
+                '</select> ',
+                '<input type="text" class="asm-textbox cfg" title="The phone number to use" data="PetRescuePhoneNumber" />',
+                '</table>',
+                '</div>'
+            ].join("\n");
+        },
+
+        render_sac: function() {
+            return [
+                '<div id="tab-sac">',
+                html.info('Signup at <a href="http://shelteranimalscount.org">shelteranimalscount.org</a><br>' + 
+                    'You will need to give SAC your account number of "' + asm.useraccount + '" in order for them to accept uploads from you.'),
+                '<p><input id="enabledsac" type="checkbox" class="asm-checkbox enablecheck" /><label for="enabledsac">' + _("Enabled") + '</label></p>',
+                '<table>',
+                '<tr>',
+                '<td><label for="sacstray">Stray Categories</label></td>',
+                '<td><select id="sacstray" multiple="multiple" class="asm-bsmselect cfg" data="SACStrayCategory">',
+                html.list_to_options(controller.entryreasons, "ID", "REASONNAME"),
+                '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="sacsurrender">Surrender Categories</label></td>',
+                '<td><select id="sacsurrender" multiple="multiple" class="asm-bsmselect cfg" data="SACSurrenderCategory">',
+                html.list_to_options(controller.entryreasons, "ID", "REASONNAME"),
+                '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="sactnr">TNR Categories</label></td>',
+                '<td><select id="sactnr" multiple="multiple" class="asm-bsmselect cfg" data="SACTNRCategory">',
+                html.list_to_options(controller.entryreasons, "ID", "REASONNAME"),
+                '</select></td>',
                 '</tr>',
                 '</table>',
                 '</div>'
@@ -589,12 +675,8 @@ $(function() {
                 '<p><input id="enabledsl" type="checkbox" class="asm-checkbox enablecheck" /><label for="enabledsl">' + _("Enabled") + '</label></p>',
                 '<table>',
                 '<tr>',
-                '<td><label for="slusername">Username</label></td>',
-                '<td><input id="slusername" type="text" class="asm-textbox cfg" data="SavourLifeUsername" /></td>',
-                '</tr>',
-                '<tr>',
-                '<td><label for="slpassword">Password</label></td>',
-                '<td><input id="slpassword" type="text" class="asm-textbox cfg" data="SavourLifePassword" /></td>',
+                '<td><label for="sltoken">Authentication Token</label></td>',
+                '<td><input id="sltoken" type="text" class="asm-textbox cfg" data="SavourLifeToken" /></td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="slinterstate">Mark as interstate</label>',
@@ -603,6 +685,28 @@ $(function() {
                 '</span>',
                 '</td>',
                 '<td><select id="slinterstate" class="asm-selectbox cfg" data="SavourLifeInterstate">',
+                '<option>No</option><option>Yes</option></select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="slradius">Distance restriction</label>',
+                '</td>',
+                '<td><select id="slradius" class="asm-selectbox cfg" data="SavourLifeRadius">',
+                '<option value="0">No restriction</option>',
+                '<option value="20">20 km</option>',
+                '<option value="40">40 km</option>',
+                '<option value="60">60 km</option>',
+                '<option value="100">100 km</option>',
+                '<option value="200">200 km</option>',
+                '<option value="500">500 km</option>',
+                '</select></td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="slmicrochips">Send microchip numbers for all animals</label>',
+                '<span id="callout-slmicrochips" class="asm-callout">',
+                'By default we only send microchip numbers for animals listed in a VIC or NSW postcode. Settings this to "Yes" will send the microchip number for all animals',
+                '</span>',
+                '</td>',
+                '<td><select id="slmicrochips" class="asm-selectbox cfg" data="SavourLifeAllMicrochips">',
                 '<option>No</option><option>Yes</option></select></td>',
                 '</tr>',
                 '</table>',
@@ -699,6 +803,14 @@ $(function() {
                 '<td><label for="akenrollmentid">AKC Reunite Enrollment Source ID</label></td>',
                 '<td><input id="akenrollmentid" type="text" class="asm-doubletextbox cfg" disabled="disabled" data="AKCEnrollmentSourceID" /></td>',
                 '</tr>',
+                '<tr>',
+                '<td><label for="akregisterall">Register</label></td>',
+                '<td><select id="akregisterall" class="asm-selectbox cfg" disabled="disabled" data="AKCRegisterAll">',
+                '<option value="No">Only AKC Microchips</option>',
+                '<option value="Yes">All Microchips</option>',
+                '</select>',
+                '</td>',
+                '</tr>',
                 '</table>',
                 '</div>'
             ].join("\n");
@@ -707,8 +819,8 @@ $(function() {
         render_foundanimals: function() {
             return [
                 '<div id="tab-foundanimals">',
-                html.info('Find out more at <a href="http://www.found.org">www.found.org</a><br/>' +
-                    'Contact clientcare@found.org to get a folder for automatic batch registrations of microchips.'),
+                html.info('Find out more at <a href="http://www.my24pet.com">www.my24pet.com</a><br/>' +
+                    'Contact clientcare@pethealthinc.com to get a folder for automatic batch registrations of microchips.'),
                 '<p><input id="enabledfa" type="checkbox" class="asm-checkbox enablecheck" /><label for="enabledfa">' + _("Enabled") + '</label></p>',
                 '<table>',
                 '<tr>',
@@ -719,9 +831,10 @@ $(function() {
                 '<td><label for="faemail">Rescue group email</label></td>',
                 '<td><input id="faemail" type="text" class="asm-textbox asm-doubletextbox cfg" data="FoundAnimalsEmail" />',
                 '<span id="callout-faemail" class="asm-callout">',
-                'To stay on record for every pet you register as the permanent rescue contact, enter your group\'s Found Animals Registry ',
-                'account email in this field. If you do not have that type of account set up, visit ',
-                '<a href="http://www.found.org/start">www.found.org/start</a><br/>',
+                'To stay on record for every pet you register as the permanent rescue contact, enter your group\'s registry ',
+                'account email in this field.',
+                //'If you do not have that type of account set up, visit ',
+                //'<a href="http://www.found.org/start">www.found.org/start</a><br/>',
                 '</span>',
                 '</td>',
                 '</tr>',
@@ -762,6 +875,21 @@ $(function() {
                 '<tr>',
                 '<td><label for="mfpassword">MPA API Password</label></td>',
                 '<td><input id="mfpassword" type="text" class="asm-textbox cfg" data="MaddiesFundPassword" /></td>',
+                '</tr>',
+                '</table>',
+                '</div>'
+            ].join("\n");
+        },
+
+        render_petcademy: function() {
+            return [
+                '<div id="tab-petcademy">',
+                html.info('Signup at <a href="https://petcademy.typeform.com/to/PTTM44">https://petcademy.typeform.com/to/PTTM44</a>'),
+                '<p><input id="enabledpc" type="checkbox" class="asm-checkbox enablecheck" /><label for="enabledpc">' + _("Enabled") + '</label></p>',
+                '<table>',
+                '<tr>',
+                '<td><label for="pctoken">Petcademy Token</label></td>',
+                '<td><input id="pctoken" type="text" class="asm-textbox cfg" data="PetcademyToken" /></td>',
                 '</tr>',
                 '</table>',
                 '</div>'
@@ -918,6 +1046,7 @@ $(function() {
                 this.render_htmlftp(),
                 this.render_petfinder(),
                 this.render_petrescue(), 
+                this.render_sac(), 
                 this.render_savourlife(), 
                 this.render_petslocated(),
                 this.render_rescuegroups(),
@@ -926,6 +1055,7 @@ $(function() {
                 this.render_foundanimals(),
                 this.render_homeagain(),
                 this.render_maddiesfund(),
+                this.render_petcademy(),
                 this.render_helpinglostpets(),
                 this.render_smarttag(),
                 this.render_vetenvoy(),
@@ -935,26 +1065,24 @@ $(function() {
         },
 
         bind_vetenvoy_signup_dialog: function() {
-            var b = { };
-            b[_("Signup")] = function() {
+            let b = { };
+            b[_("Signup")] = async function() {
                 validate.reset("dialog-vetenvoy");
                 if (!validate.notblank([ "vefirstname", "velastname", "vephone", "veemail", "vepracticename", "vezipcode", "veaddress" ])) { return; }
                 $("#dialog-vetenvoy").disable_dialog_buttons();
-                var formdata = $("#dialog-vetenvoy .asm-textbox, #dialog-vetenvoy .asm-selectbox").toPOST();
-                common.ajax_post("publish_options", "mode=vesignup&" + formdata)
-                    .then(function(result) {
-                        $("#dialog-vetenvoy").dialog("close");
-                        $("#dialog-vetenvoy").enable_dialog_buttons();
-                        // Result should be userid,password
-                        $("#veuserid").val(result.split(",")[0]);
-                        $("#veuserpassword").val(result.split(",")[1]);
-                        $("#enabledve").prop("checked", true);
-                        $("#enabledve").closest("div").find(".asm-doubletextbox").removeAttr("disabled");
-                        // Hide the signup button
-                        $("#button-vesignup").hide();
-                        // Prompt to save
-                        validate.dirty(true);
-                    });
+                let formdata = $("#dialog-vetenvoy .asm-textbox, #dialog-vetenvoy .asm-selectbox").toPOST();
+                let result = await common.ajax_post("publish_options", "mode=vesignup&" + formdata);
+                $("#dialog-vetenvoy").dialog("close");
+                $("#dialog-vetenvoy").enable_dialog_buttons();
+                // Result should be userid,password
+                $("#veuserid").val(result.split(",")[0]);
+                $("#veuserpassword").val(result.split(",")[1]);
+                $("#enabledve").prop("checked", true);
+                $("#enabledve").closest("div").find(".asm-doubletextbox").removeAttr("disabled");
+                // Hide the signup button
+                $("#button-vesignup").hide();
+                // Prompt to save
+                validate.dirty(true);
             };
             b[_("Cancel")] = function() {
                 $("#dialog-vetenvoy").dialog("close");
@@ -972,9 +1100,9 @@ $(function() {
 
 
         bind: function() {
-            var change_checkbox = function() {
+            const change_checkbox = function() {
                 $(".enablecheck").each(function() {
-                    var enabled = $(this).is(":checked");
+                    let enabled = $(this).is(":checked");
                     if (enabled) {
                         $(this).closest("div").find("select").select("enable");
                         $(this).closest("div").find(".asm-textbox, .asm-doubletextbox").removeAttr("disabled");
@@ -988,11 +1116,11 @@ $(function() {
                 });
             };
 
-            var cfg_presets = function() {
+            const cfg_presets = function() {
                 // Read the controls tagged with preset and build an 
                 // old style publisher command line string for storing as a
                 // configuration option.
-                var pr = "";
+                let pr = "";
                 $(".preset").each(function() {
                     if ($(this).is(".pbool")) {
                         if ($(this).val() == "1") { pr += " " + $(this).attr("data"); }
@@ -1001,15 +1129,15 @@ $(function() {
                         pr += " " + $(this).attr("data") + "=" + $(this).val();
                     }
                 });
-                return encodeURIComponent($.trim(pr));
+                return encodeURIComponent(common.trim(pr));
             };
 
-            var cfg_enabled = function() {
+            const cfg_enabled = function() {
                 // Read the enable checkboxes and build a list of enabled publishers 
                 // for storing as a configuration option.
-                var ep = [];
+                let ep = [];
                 $(".enablecheck").each(function() {
-                    var c = $(this), k = c.attr("id").replace("enabled", "");
+                    let c = $(this), k = c.attr("id").replace("enabled", "");
                     // VetEnvoy has two publishers - enable them both if VetEnvoy is on
                     if (c.is(":checked") && k == "ve") { ep.push("veha"); ep.push("vear"); }
                     else if (c.is(":checked")) { ep.push(k); }
@@ -1020,35 +1148,17 @@ $(function() {
             // Disable publisher panels when the checkbox says they're disabled
             $(".enablecheck").change(change_checkbox);
 
-            // Disable publishing to a folder if it was overridden
-            if (controller.publishurl != "") {
-                $("#publishdirrow").hide();
-                $("#publishdiroverride").show();
-                var url = controller.publishurl;
-                url = url.replace("{alias}", asm.useraccountalias);
-                url = url.replace("{database}", asm.useraccount);
-                url = url.replace("{username}", asm.user);
-                $("#publishdiroverride a").attr("href", url).text(url);
-            }
-
-            // Disable ftp upload controls if ftp has been overridden
-            if (controller.hasftpoverride) {
-                $("#ftpuploadtable").hide();
-            }
-
             // Toolbar buttons
-            $("#button-save").button().click(function() {
+            $("#button-save").button().click(async function() {
                 $("#button-save").button("disable");
                 validate.dirty(false);
-                var formdata = "mode=save&" + $(".cfg").toPOST();
+                let formdata = "mode=save&" + $(".cfg").toPOST();
                 formdata += "&PublisherPresets=" + cfg_presets();
                 formdata += "&PublishersEnabled=" + cfg_enabled();
                 header.show_loading(_("Saving..."));
-                common.ajax_post("publish_options", formdata)
-                    .then(function() { 
-                        // Needs to do a full reload to get config.js to update
-                        common.route_reload(true); 
-                    });
+                await common.ajax_post("publish_options", formdata);
+                // Needs to do a full reload to get config.js to update
+                common.route_reload(true); 
             });
 
             $("#button-save").button("disable");
@@ -1059,6 +1169,8 @@ $(function() {
             $(".localeca").hide();
             $(".localegb").hide();
             $(".localemx").hide();
+            $(".english").hide();
+            if (asm.locale.indexOf("en") == 0) { $(".english").show(); }
             if (asm.locale == "en") { $(".localeus").show(); }
             if (asm.locale == "en_AU") { $(".localeau").show(); }
             if (asm.locale == "en_GB") { $(".localegb").show(); }
@@ -1068,11 +1180,14 @@ $(function() {
             // Disable services that require sitedef setup
             if (!controller.hasakcreunite) { $(".hasakcreunite").hide(); }
             if (!controller.hasfoundanimals) { $(".hasfoundanimals").hide(); }
+            if (!controller.hashtmlftp) { $(".hashtmlftp").hide(); }
             if (!controller.hashomeagain) { $(".hashomeagain").hide(); }
             if (!controller.hasmaddiesfund) { $(".hasmaddiesfund").hide(); }
+            if (!controller.haspetcademy) { $(".haspetcademy").hide(); }
             if (!controller.haspetlink) { $(".haspetlink").hide(); }
             if (!controller.haspetrescue) { $(".haspetrescue").hide(); }
             if (!controller.haspetslocated) { $(".haspetslocated").hide(); }
+            if (!controller.hassac) { $(".hassac").hide(); }
             if (!controller.hassavourlife) { $(".hassavourlife").hide(); }
             if (!controller.hasvetenvoy) { $(".hasvetenvoy").hide(); }
             if (!controller.hassmarttag) { $(".hassmarttag").hide(); }
@@ -1083,7 +1198,7 @@ $(function() {
             // Load default values from the config settings
             $(".cfg").each(function() {
                 if ($(this).attr("data")) {
-                    var d = $(this).attr("data");
+                    let d = $(this).attr("data");
                     if ($(this).is("input:text")) {
                         $(this).val( html.decode(config.str(d)));
                     }
@@ -1091,7 +1206,7 @@ $(function() {
                         $(this).attr("checked", config.bool(d));
                     }
                     else if ($(this).hasClass("asm-bsmselect")) {
-                        var n = $(this);
+                        let n = $(this);
                         n.children().prop("selected", false);
                         $.each(config.str(d).split(/[|,]+/), function(mi, mv) {
                             n.find("[value='" + mv + "']").prop("selected", true);
@@ -1108,11 +1223,11 @@ $(function() {
             });
 
             // Set presets from command line configuration
-            var cl = config.str("PublisherPresets");
+            let cl = config.str("PublisherPresets");
             $.each(cl.split(" "), function(i, o) {
                 // Deal with boolean flags in command line
                 $.each( [ "includecase", "includereserved", "includefosters", 
-                    "includewithoutdescription", "includewithoutimage", "includenonneutered", 
+                    "includewithoutdescription", "includewithoutimage", "includenonneutered", "includenonmicrochip", 
                     "includecolours", "includeretailer", "includehold", "includequarantine", "includetrial",
                     "bondedassingle", "clearexisting", "uploadall", "forcereupload", 
                     "generatejavascriptdb","thumbnails", "checksocket", "uploaddirectly", 
@@ -1127,13 +1242,13 @@ $(function() {
                     "childadultsplit", "outputadopteddays" ],
                 function(vi, vo) {
                     if (o.indexOf(vo) == 0) {
-                        var v = o.split("=")[1];
-                        var node = $("[data='" + vo + "']");
+                        let v = o.split("=")[1];
+                        let node = $("[data='" + vo + "']");
                         if (node.hasClass("asm-selectbox")) {
                             node.select("value", v);
                         }
                         else if (node.hasClass("asm-bsmselect")) {
-                            var ls = v.split(",");
+                            let ls = v.split(",");
                             $.each(ls, function(li, lv) {
                                 node.find("[value='" + lv + "']").prop("selected", "selected");
                             });
@@ -1147,7 +1262,7 @@ $(function() {
             });
 
             // Set enabled checkboxes from enabled publisher list
-            var pe = config.str("PublishersEnabled");
+            let pe = config.str("PublishersEnabled");
             $.each(pe.split(" "), function(i, v) {
                 $("#enabled" + v).attr("checked", true);
             });

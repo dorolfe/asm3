@@ -1,8 +1,8 @@
-Rota between Two Dates by Person and Type
+Rota between two dates by person and type
 ###
 Rota
 ###
-33609/PostgreSQL
+33609/PostgreSQL rev01
 ###
 All rota items between two dates by person and type
 ###

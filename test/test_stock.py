@@ -1,4 +1,3 @@
-#!/usr/bin/python env
 
 import unittest
 import base
@@ -35,6 +34,9 @@ class TestStock(unittest.TestCase):
 
     def test_get_stocklevels(self):
         assert len(asm3.stock.get_stocklevels(base.get_dbo())) > 0
+
+    def test_get_stocklevels_depleted(self):
+        asm3.stock.get_stocklevels_depleted(base.get_dbo())
 
     def test_update_stocklevel_from_form(self):
         data = {

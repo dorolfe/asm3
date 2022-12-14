@@ -2,7 +2,7 @@ Shelter Inventory with Pictures
 ###
 Inventories
 ###
-Any
+Any rev01
 ###
 Shelter inventory by location/species with thumbnails for each animal.
 ###
@@ -10,6 +10,7 @@ en
 ###
 SELECT
 a.ShelterCode,
+a.IdentichipNumber, 
 a.AnimalName,
 a.BreedName,
 (SELECT Size FROM lksize WHERE ID = a.Size) AS aSize,
@@ -17,7 +18,8 @@ a.BreedName,
 (SELECT Name FROM lksyesno WHERE ID = a.Neutered) AS aNeutered,
 a.AnimalAge,
 a.TimeOnShelter,
-CASE WHEN a.ActiveMovementType = 2 THEN 'Foster' ELSE l.LocationName END AS LocationName,
+CASE WHEN a.ActiveMovementType = 2 THEN 'Foster' WHEN a.ActiveMovementType = 8 THEN 'Retailer' WHEN a.ActiveMovementType = 1 THEN 'Trial Adoption' ELSE l.LocationName END AS LocationName,
+OwnerName, OwnerAddress, OwnerTown, OwnerCounty, OwnerPostcode, EmailAddress, MobileTelephone,  
 (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithCats) AS aGoodWithCats,
 (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithDogs) AS aGoodWithDogs,
 (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithChildren) AS aGoodWithKids,
@@ -26,6 +28,8 @@ a.ID AS animalid,
 a.AnimalComments,
 s.SpeciesName
 FROM animal a
+LEFT OUTER JOIN adoption m ON m.ID = a.ActiveMovementID
+LEFT OUTER JOIN owner o ON o.ID = m.OwnerID
 LEFT OUTER JOIN internallocation l ON l.ID = a.ShelterLocation
 LEFT OUTER JOIN species s ON s.ID = a.SpeciesID
 WHERE Archived = 0
@@ -49,6 +53,7 @@ $$HEAD
 <tr>
 <th>Code</th>
 <th>Name</th>
+<th>Microchip</th>
 <th>Breed</th>
 <th>Size</th>
 <th>Sex/Fixed</th>
@@ -69,12 +74,14 @@ $$BODY
 <tr>
 <td>$SHELTERCODE</td>
 <td>$ANIMALNAME</td>
+<td>$IDENTICHIPNUMBER</td>
 <td>$BREEDNAME</td>
 <td>$ASIZE</td>
 <td>$ASEX / $ANEUTERED</td>
 <td>$ANIMALAGE</td>
 <td>$TIMEONSHELTER</td>
-<td>$LOCATIONNAME</td>
+<td>$LOCATIONNAME <b>$OWNERNAME</b><br/>
+$OWNERADDRESS<br/>$OWNERTOWN<br/> $OWNERCOUNTY $OWNERPOSTCODE<br/>$EMAILADDRESS $MOBILETELEPHONE</td>
 <td>Cats: $AGOODWITHCATS<br/>
 Dogs: $AGOODWITHDOGS<br/>
 Kids: $AGOODWITHKIDS</td>

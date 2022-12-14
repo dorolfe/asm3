@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, edit_header, format, header, html, mapping, tableform, validate */
 
 $(function() {
 
-    var incident = {
+    "use strict";
+
+    const incident = {
 
         render_details: function() {
             return [
@@ -11,8 +12,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left column -->',
-                '<td width="35%">',
+                // left column
+                '<td width="35%" class="asm-nested-table-td">',
                 '<table width="100%" class="additionaltarget" data="to16">',
                 '<tr>',
                 '<td>' + _("Number") + '</td>',
@@ -53,8 +54,9 @@ $(function() {
                 '<td><textarea id="callnotes" data-json="CALLNOTES" data-post="callnotes" class="asm-textarea" rows="3"></textarea></td>',
                 '</tr>',
                 '<tr>',
-                '<td><label for="completeddate">' + _("Completion Date") + '</label></td>',
-                '<td><input id="completeddate" data-json="COMPLETEDDATE" data-post="completeddate" class="asm-textbox asm-datebox" />',
+                '<td><label for="completeddate">' + _("Completion Date/Time") + '</label></td>',
+                '<td><input id="completeddate" data-json="COMPLETEDDATE" data-post="completeddate" class="asm-halftextbox asm-datebox" />',
+                '<input id="completedtime" data-json="COMPLETEDDATE" data-post="completedtime" class="asm-halftextbox asm-timebox" /></td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="completedtype">' + _("Completion Type") + '</label></td>',
@@ -65,8 +67,8 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<!-- right column -->',
-                '<td width="35%">',
+                // right column
+                '<td width="35%" class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<tr>',
                 '<td><label for="calldate">' + _("Call Date/Time") + '</label></td>',
@@ -105,8 +107,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left table -->',
-                '<td width="35%">',
+                // left table 
+                '<td width="35%" class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<tr>',
                 '<td><label for="dispatchaddress">' + _("Address") + '</label></td>',
@@ -123,7 +125,11 @@ $(function() {
                 '<tr class="towncounty">',
                 '<td><label for="dispatchcounty">' + _("State") + '</label></td>',
                 '<td>',
-                '<input type="text" id="dispatchcounty" data-json="DISPATCHCOUNTY" data-post="dispatchcounty" maxlength="100" class="asm-textbox" />',
+                common.iif(config.bool("USStateCodes"),
+                    '<select id="dispatchcounty" data-json="DISPATCHCOUNTY" data-post="dispatchcounty" class="asm-selectbox">' +
+                    html.states_us_options() + '</select>',
+                    '<input type="text" id="dispatchcounty" data-json="DISPATCHCOUNTY" data-post="dispatchcounty" maxlength="100" ' + 
+                    'class="asm-textbox" />'),
                 '</td>',
                 '</tr>',
                 '<tr>',
@@ -133,7 +139,9 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '<tr id="dispatchlatlongrow">',
-                '<td><label for="dispatchlatlong">' + _("Latitude/Longitude") + '</label></td>',
+                '<td><label for="dispatchlatlong">' + _("Latitude/Longitude"),
+                '<span class="asm-callout">' + _("Right-click on the map to change the marker location") + '</span>',
+                '</label></td>',
                 '<td><input type="text" class="asm-latlong" id="dispatchlatlong" data-json="DISPATCHLATLONG" data-post="dispatchlatlong" /></td>',
                 '</tr>',
                 '<tr>',
@@ -151,16 +159,15 @@ $(function() {
                 '</select>',
                 '</td>',
                 '</tr>',
-                '<!-- end left table -->',
+                // end left table
                 '</table>',
-                '<!-- Second column -->',
+                // Second column
                 '</td>',
-                '<td width="30%">',
+                '<td width="30%" class="asm-nested-table-td">',
                 '<table width="100%" class="additionaltarget" data="to17">',
                 '<tr>',
                 '<td><label for="dispatchedaco">' + _("Dispatched ACO") + '</label></td>',
-                '<td><select id="dispatchedaco" data-json="DISPATCHEDACO" data-post="dispatchedaco" class="asm-selectbox">',
-                '<option> </option>',
+                '<td><select id="dispatchedaco" data-json="DISPATCHEDACO" data-post="dispatchedaco" class="asm-bsmselect" multiple="multiple">',
                 html.list_to_options(controller.users, "USERNAME", "USERNAME"),
                 '</td>',
                 '</tr>',
@@ -201,10 +208,10 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- Third column, embedded map placeholder -->',
+                // Third column, embedded map placeholder
                 '</td>',
-                '<td width="35%">',
-                '<div id="embeddedmap" style="z-index: 1; width: 100%; height: 300px; color: #000" />',
+                '<td width="35%" class="asm-nested-table-td">',
+                '<div id="embeddedmap" style="z-index: 1; width: 100%; height: 300px; color: #000"></div>',
                 '<!-- end outer table -->',
                 '</td>',
                 '</tr>',
@@ -219,8 +226,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<td width="50%">',
-                '<!-- left table -->',
+                '<td width="50%" class="asm-nested-table-td">',
+                // left table 
                 '<table width="100%" class="additionaltarget" data="to18">',
                 '<tr>',
                 '<td>' + _("Suspect 1") + '</td>',
@@ -238,9 +245,9 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- right table -->',
+                // right table
                 '</td>',
-                '<td>',
+                '<td class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<td><label for="species">' + _("Species") + '</label></td>',
                 '<td nowrap="nowrap">',
@@ -271,7 +278,7 @@ $(function() {
                 '<td><textarea id="animaldescription" data-json="ANIMALDESCRIPTION" data-post="animaldescription" class="asm-textarea"></textarea></td>',
                 '</tr>',
                 '</table>',
-                '<!-- end right table -->',
+                // end right table
 
                 '<p class="asm-menu-category">' + _("Animals") + ' <button id="button-linkanimal">' + _("Link an animal") + '</button></p>',
                 '<div id="animallist">',
@@ -286,21 +293,19 @@ $(function() {
         },
 
         load_animallinks: function() {
-            var h = [];
+            let h = [];
             $.each(controller.animallinks, function(i, v) {
                 h.push('<span class="linkedanimal"><button data="' + v.ID + '">' + _("Remove") + '</button> ' 
                     + html.animal_link(v, { emblemsright: true, showlocation: false }) + '</span><br />');
             });
             $("#animallist").empty().html(h.join("\n"));
             $("#animallist button").button({ icons: { primary: "ui-icon-trash" }, text: false })
-                .click(function() {
-                    var node = $(this),
+                .click(async function() {
+                    let node = $(this),
                         animalid = node.attr("data");
                     node.button("disable");
-                    common.ajax_post("incident", "mode=linkanimaldelete&id=" + controller.incident.ID + "&animalid=" + animalid)
-                        .then(function() {
-                            node.closest(".linkedanimal").fadeOut().then().remove();
-                        });
+                    await common.ajax_post("incident", "mode=linkanimaldelete&id=" + controller.incident.ID + "&animalid=" + animalid);
+                    node.closest(".linkedanimal").fadeOut().then().remove();
                 });
         },
 
@@ -311,7 +316,7 @@ $(function() {
                 edit_header.template_list(controller.templates, "ANIMALCONTROL", controller.incident.ID),
                 '</ul>',
                 '</div>',
-                '<div id="emailform" />',
+                '<div id="emailform"></div>',
                 '<div id="dialog-linkanimal" style="display: none" title="' + html.title(_("Link an animal")) + '">',
                 '<table width="100%">',
                 '<tr>',
@@ -327,8 +332,8 @@ $(function() {
                     //{ id: "toanimal", text: _("Create Animal"), icon: "animal-add", tooltip: _("Create a new animal from this incident") }
                     { id: "document", text: _("Document"), type: "buttonmenu", icon: "document", tooltip: _("Generate a document from this incident") },
                     { id: "email", text: _("Email"), icon: "email", tooltip: _("Email incident notes to ACO") },
-                    { id: "dispatch", text: _("Dispatch"), icon: "calendar", tooltip: _("Mark dispatched now") },
-                    { id: "respond", text: _("Respond"), icon: "calendar", tooltip: _("Mark responded now") },
+                    { id: "dispatch", text: _("Dispatch"), icon: "calendar", perm: "cacd", tooltip: _("Mark dispatched now") },
+                    { id: "respond", text: _("Respond"), icon: "calendar", perm: "cacr", tooltip: _("Mark responded now") },
                     { id: "map", text: _("Map"), icon: "map", tooltip: _("Find this address on a map") }
                 ]),
                 '<div id="asm-details-accordion">',
@@ -348,8 +353,8 @@ $(function() {
         enable_widgets: function() {
             // Hide additional accordion section if there aren't
             // any additional fields declared
-            var ac = $("#asm-additional-accordion");
-            var an = ac.next();
+            let ac = $("#asm-additional-accordion");
+            let an = ac.next();
             if (an.find(".additional").length == 0) {
                 ac.hide(); an.hide();
             }
@@ -387,11 +392,11 @@ $(function() {
         },
 
         get_map_url: function() {
-            var add = $("#dispatchaddress").val().replace("\n", ",");
-            var town = $("#dispatchtown").val();
-            var county = $("#dispatchcounty").val();
-            var postcode = $("#dispatchpostcode").val();
-            var map = add;
+            let add = $("#dispatchaddress").val().replace("\n", ",");
+            let town = $("#dispatchtown").val();
+            let county = $("#dispatchcounty").val();
+            let postcode = $("#dispatchpostcode").val();
+            let map = add;
             if (town != "") { map += "," + town; }
             if (county != "") { map += "," + county; }
             if (postcode != "") { map += "," + postcode; }
@@ -400,7 +405,7 @@ $(function() {
         },
 
         show_mini_map: function() {
-            setTimeout(function() {
+            setTimeout(() => {
                 mapping.draw_map("embeddedmap", 15, controller.incident.DISPATCHLATLONG, [{ 
                     latlong: controller.incident.DISPATCHLATLONG, popuptext: controller.incident.DISPATCHADDRESS, popupactive: true }]);
             }, 50);
@@ -413,7 +418,7 @@ $(function() {
             validate.reset();
 
             // incident date
-            if ($.trim($("#incidentdate").val()) == "") {
+            if (common.trim($("#incidentdate").val()) == "") {
                 header.show_error(_("Incident date cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("incidentdate");
@@ -421,7 +426,7 @@ $(function() {
             }
 
             // times
-            if (!validate.validtime([ "incidenttime", "calltime", "dispatchtime", "respondedtime", 
+            if (!validate.validtime([ "incidenttime", "calltime", "completedtime", "dispatchtime", "respondedtime", 
                 "followuptime", "followuptime2", "followuptime3" ])) { 
                 return false; 
             }
@@ -455,7 +460,7 @@ $(function() {
             validate.save = function(callback) {
                 if (!incident.validation()) { header.hide_loading(); return; }
                 validate.dirty(false);
-                var formdata = "mode=save" +
+                let formdata = "mode=save" +
                     "&id=" + $("#incidentid").val() + 
                     "&recordversion=" + controller.incident.RECORDVERSION + 
                     "&" + $("input, select, textarea").not(".chooser").toPOST();
@@ -474,25 +479,24 @@ $(function() {
                 });
             });
 
-            $("#button-toanimal").button().click(function() {
+            $("#button-toanimal").button().click(async function() {
                 $("#button-toanimal").button("disable");
-                var formdata = "mode=toanimal&id=" + $("#incidentid").val();
-                common.ajax_post("incident", formdata)
-                    .then(function(result) { 
-                        common.route("animal?id=" + result); 
-                    });
+                let formdata = "mode=toanimal&id=" + $("#incidentid").val();
+                let result = await common.ajax_post("incident", formdata);
+                common.route("animal?id=" + result); 
             });
 
             $("#button-email").button().click(function() {
-                var emailname = "", emailaddress = "";
+                let emailaddress = "", emailname = "";
                 $.each(controller.users, function(i, v) {
-                    if (v.USERNAME == $("#dispatchedaco").select("value")) {
+                    if (common.array_in(v.USERNAME, String($("#dispatchedaco").val()).split(","))) {
+                        if (emailaddress != "") { emailaddress += ", "; }
                         emailname = v.REALNAME;
-                        emailaddress = v.EMAILADDRESS;
+                        emailaddress += v.EMAILADDRESS;
                     }
                 });
-                var i = controller.incident;
-                var msg = [ 
+                let i = controller.incident;
+                let msg = [ 
                     _("Type") + ": " + i.INCIDENTNAME,
                     _("Date/Time") + ": " + format.date(i.INCIDENTDATETIME) + " " + format.time(i.INCIDENTDATETIME),
                     _("Address") + ": " + i.DISPATCHADDRESS + ' ' + i.DISPATCHTOWN + ' ' + i.DISPATCHCOUNTY + ' ' + i.DISPATCHPOSTCODE,
@@ -501,30 +505,26 @@ $(function() {
                     _("Victim") + ": " + common.nulltostr(i.VICTIMNAME),
                     _("Suspect") + ": " + common.nulltostr(i.OWNERNAME1)
                 ].join("\n");
-                var subject = html.decode(_("Dispatch {0}: {1}")
+                let subject = html.decode(_("Dispatch {0}: {1}")
                         .replace("{0}", format.padleft(controller.incident.ACID, 6))
                         .replace("{1}", $("#dispatchaddress").val()) );
                 $("#emailform").emailform("show", {
                     title: _("Email incident notes to ACO"),
                     post: "incident",
                     formdata: "mode=email",
-                    name: emailname,
+                    name: common.iif(emailaddress.indexOf(",") == -1, emailname, ""),
                     email: emailaddress,
                     message: "<p>" + common.replace_all(html.decode(msg), "\n", "<br/>") + "</p>",
                     subject: subject
                 });
             });
 
-            $("#button-delete").button().click(function() {
-                tableform.delete_dialog(null, _("This will permanently remove this incident, are you sure?"))
-                    .then(function() {
-                        var formdata = "mode=delete&id=" + $("#incidentid").val();
-                        return common.ajax_post("incident", formdata);
-                    })
-                    .then(function() { 
-                        $("#dialog-delete").dialog("close"); 
-                        common.route("main");
-                    });
+            $("#button-delete").button().click(async function() {
+                await tableform.delete_dialog(null, _("This will permanently remove this incident, are you sure?"));
+                let formdata = "mode=delete&id=" + $("#incidentid").val();
+                await common.ajax_post("incident", formdata);
+                $("#dialog-delete").dialog("close"); 
+                common.route("main");
             });
 
             $("#button-dispatch").button().click(function() {
@@ -533,7 +533,10 @@ $(function() {
                     $("#dispatchtime").val(format.time(new Date()));
                     $("#asm-details-accordion").accordion("option", "active", 2);
                     $("#button-dispatch").button("disable");
-                    validate.dirty(true);
+                    header.show_loading(_("Saving..."));
+                    validate.save(function() {
+                        common.route_reload();
+                    });
                 }
             });
 
@@ -546,37 +549,48 @@ $(function() {
                     $("#respondedtime").val(format.time(new Date()));
                     $("#asm-details-accordion").accordion("option", "active", 2);
                     $("#button-respond").button("disable");
-                    validate.dirty(true);
+                    header.show_loading(_("Saving..."));
+                    validate.save(function() {
+                        common.route_reload();
+                    });
                 }
             });
 
             $("#button-map").button().click(function() {
-                var mapq = incident.get_map_url();
-                var maplinkref = String(asm.maplink).replace("{0}", mapq);
+                let mapq = incident.get_map_url();
+                let maplinkref = String(asm.maplink).replace("{0}", mapq);
                 window.open(maplinkref, "_blank");
             });
 
             $("#button-linkanimal")
                 .button({ icons: { primary: "ui-icon-link" }, text: false })
-                .click(function() {
+                .click(async function() {
                     $("#linkanimal").animalchooser("clear");
-                    tableform.show_okcancel_dialog("#dialog-linkanimal", _("Link"), { notzero: [ "linkanimal" ] })
-                        .then(function() {
-                            var a = $("#linkanimal").animalchooser("get_selected");
-                            return common.ajax_post("incident", "mode=linkanimaladd&id=" + controller.incident.ID + "&animalid=" + a.ID);
-                        })
-                        .then(function() {
-                            var a = $("#linkanimal").animalchooser("get_selected");
-                            controller.animallinks.push(a);
-                            incident.load_animallinks();
-                        });
-            });
+                    await tableform.show_okcancel_dialog("#dialog-linkanimal", _("Link"), { notzero: [ "linkanimal" ] });
+                    let a = $("#linkanimal").animalchooser("get_selected");
+                    await common.ajax_post("incident", "mode=linkanimaladd&id=" + controller.incident.ID + "&animalid=" + a.ID);
+                    controller.animallinks.push(a);
+                    incident.load_animallinks();
+                });
 
             additional.relocate_fields();
 
         },
 
         sync: function() {
+
+            // If any of the dispatched ACOs are not in the list (can happen if a
+            // user account is later deleted), add it to the aco list so that it doesn't
+            // disappear.
+            $.each(controller.incident.DISPATCHEDACO.split(","), function(ia, aco) {
+                let acoinlist = false;
+                $.each(controller.users, function(i, v) {
+                    if (v.USERNAME == aco) { acoinlist = true; return false; }
+                });
+                if (!acoinlist) {
+                    $("#dispatchedaco").append("<option value=\"" + html.title(aco) + "\">" + aco + "</option>");
+                }
+            });
 
             // Load the data into the controls for the screen
             $("#asm-content input, #asm-content select, #asm-content textarea").fromJSON(controller.incident);
@@ -593,6 +607,7 @@ $(function() {
 
             // Dirty handling
             validate.bind_dirty([ "incident_" ]);
+            validate.indicator([ "incidentdate", "calldate" ]);
 
         },
 

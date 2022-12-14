@@ -2,16 +2,18 @@ Licenses expiring between two dates
 ###
 Animal Control
 ###
-33307/Any
+33307/Any rev02
 ###
-Licenses that expire between the two dates given and have not been renewed
+Licenses that expire between the two dates given and have not been renewed and the animal is still alive
 ###
 en
 ###
 SELECT
 ol.LicenceNumber,
 lt.LicenceTypeName,
-o.OwnerName, a.AnimalName,
+ol.OwnerID, o.OwnerName, o.OwnerAddress, o.OwnerTown, o.OwnerCounty, o.OwnerPostcode,
+o.HomeTelephone, o.WorkTelephone, o.MobileTelephone, o.EmailAddress,
+a.AnimalName,
 ol.IssueDate, ol.ExpiryDate, ol.Comments
 FROM ownerlicence ol
 INNER JOIN licencetype lt ON lt.ID = ol.LicenceTypeID
@@ -19,7 +21,8 @@ INNER JOIN owner o ON o.ID = ol.OwnerID
 LEFT OUTER JOIN animal a ON a.ID = ol.AnimalID 
 WHERE ol.ExpiryDate >= '$ASK DATE Enter the from date$'
 AND ol.ExpiryDate <= '$ASK DATE Enter the to date$' AND a.DeceasedDate Is Null
-AND NOT EXISTS(SELECT ID FROM ownerlicence WHERE OwnerID=o.ID AND ExpiryDate > '$CURRENT_DATE$')
+AND (ol.AnimalID = 0 OR a.DeceasedDate Is Null)
+AND NOT EXISTS(SELECT ID FROM ownerlicence WHERE ID <> ol.ID AND OwnerID=o.ID AND AnimalID=a.ID AND ExpiryDate > '$CURRENT_DATE$')
 ORDER BY ol.ExpiryDate
 ###
 $$HEADER
@@ -39,7 +42,13 @@ $$BODY
 <tr>
 <td>$LICENCENUMBER</td>
 <td>$LICENCETYPENAME</td>
-<td>$OWNERNAME</td>
+<td><a target="_blank" href="person?id=$OWNERID">$OwnerName</a><br/>
+$OwnerAddress<br/>
+$OwnerTown<br/>
+$OwnerCounty<br/>
+$OwnerPostcode<br/>
+$EmailAddress<br/>
+H: $HOMETELEPHONE, W: $WORKTELEPHONE, C: $MOBILETELEPHONE</td>
 <td>$ANIMALNAME</td>
 <td>$ISSUEDATE</td>
 <td>$EXPIRYDATE</td>

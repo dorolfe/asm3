@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, validate */
 
 $(function() {
 
-    var clinic_calendar = {
+    "use strict";
+
+    const clinic_calendar = {
 
         update_events: function() {
             clinic_calendar.calendar_events.data.apptfor = $("#consultant").select("value");
@@ -30,7 +31,7 @@ $(function() {
                 html.list_to_options(controller.forlist, "USERNAME", "USERNAME"),
                 '</select>',
                 '</p>',
-                '<div id="calendar" style="max-width: 900px; margin-left: auto; margin-right: auto;" />',
+                '<div id="calendar" style="max-width: 900px; margin-left: auto; margin-right: auto;"></div>',
                 html.content_footer()
             ].join("\n");
         },
@@ -42,14 +43,15 @@ $(function() {
                     center: 'title',
                     right: 'month,agendaWeek,agendaDay,listMonth'
                 }, 
+                isRTL: (asm.locale == "ar" || asm.locale == "he"),
                 editable: false,
                 firstDay: config.integer("FirstDayOfWeek"),
                 eventLimit: true,
                 events: [],
                 eventRender: function(event, element) {
-                    var title = element.find(".fc-title");
-                    var listtitle = element.find(".fc-list-item-title a");
-                    var time = element.find(".fc-time");
+                    let title = element.find(".fc-title"), 
+                        listtitle = element.find(".fc-list-item-title a"),
+                        time = element.find(".fc-time");
                     // Need to decode html entities in the title
                     title.html(event.title);
                     listtitle.html(event.title);
@@ -80,7 +82,7 @@ $(function() {
 
         sync: function() {
             // If there's an apptfor parameter, sync our checkboxes
-            var apptfor = common.querystring_param("apptfor");
+            let apptfor = common.querystring_param("apptfor");
             $("#consultant").select("value", apptfor);
             setTimeout(function() {
                 $("#calendar").fullCalendar("today");

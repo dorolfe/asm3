@@ -1,12 +1,13 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, validate */
 
 $(function() {
 
-    var calendarview = {
+    "use strict";
+
+    const calendarview = {
 
         update_events_from_checkboxes: function() {
-            var ev = "";
+            let ev = "";
             $("#toggles input:checked").each(function() {
                 ev += $(this).attr("data");
             });
@@ -45,8 +46,8 @@ $(function() {
                 '<label for="toggle-test">' + _("Test") + '</label>',
                 '</span> ',
                 '<span class="asm-calendar-legend">',
-                html.icon("health") + '<input id="toggle-test" data="c" type="checkbox" class="asm-checkbox" />' + 
-                '<label for="toggle-test">' + _("Clinic") + '</label>',
+                html.icon("health") + '<input id="toggle-clinic" data="c" type="checkbox" class="asm-checkbox" />' + 
+                '<label for="toggle-clinic">' + _("Clinic") + '</label>',
                 '</span> ',
                 '<span class="asm-calendar-legend">',
                 html.icon("donation") + '<input id="toggle-donation" data="p" type="checkbox" class="asm-checkbox" />' + 
@@ -65,7 +66,7 @@ $(function() {
                 '<label for="toggle-traploan">' + _("Trap loan") + '</label>',
                 '</span>',
                 '</p>',
-                '<div id="calendar" style="max-width: 900px; margin-left: auto; margin-right: auto;" />',
+                '<div id="calendar" style="max-width: 900px; margin-left: auto; margin-right: auto;"></div>',
                 html.content_footer()
             ].join("\n");
         },
@@ -77,20 +78,27 @@ $(function() {
                     center: 'title',
                     right: 'month,agendaWeek,agendaDay,listMonth'
                 }, 
+                isRTL: (asm.locale == "ar" || asm.locale == "he"),
                 editable: false,
                 firstDay: config.integer("FirstDayOfWeek"),
                 eventLimit: true,
                 events: [],
                 eventRender: function(event, element) {
-                    var title = element.find(".fc-title");
-                    var listtitle = element.find(".fc-list-item-title a");
-                    var time = element.find(".fc-time");
+                    let title = element.find(".fc-title"),
+                        listtitle = element.find(".fc-list-item-title a"),
+                        time = element.find(".fc-time");
                     // Need to decode html entities in the title
                     title.html(event.title);
                     listtitle.html(event.title);
                     // We extend the default event object to support tooltips and icons
-                    if (event.tooltip) { element.prop("title", html.decode(event.tooltip)); }
-                    if (event.link) { title.wrap('<a style="color: #fff" href="' + event.link + '"></a>'); }
+                    if (event.tooltip) { 
+                        element.prop("title", html.decode(event.tooltip)); 
+                    }
+                    if (event.link) { 
+                        title.wrap('<a style="color: #fff" href="' + event.link + '"></a>');
+                        listtitle.prop("href", event.link);
+                        if (event.tooltip) { listtitle.html(event.tooltip); } // Use the more detailed version in the list
+                    }
                     if (event.icon) { 
                         if (time.length > 0) {
                             time.prepend(html.icon(event.icon)); 
@@ -116,7 +124,7 @@ $(function() {
         sync: function() {
 
             // If there's an ev parameter, sync our checkboxes
-            var ev = common.querystring_param("ev");
+            let ev = common.querystring_param("ev");
             if (!ev) { ev = "dvmtcrolp"; }
             $("#toggles input").each(function() {
                 if (ev.indexOf( $(this).attr("data") ) != -1) {

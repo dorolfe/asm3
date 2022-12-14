@@ -1,33 +1,34 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, edit_header, format, header, html, validate */
 
 $(function() {
 
-    var search = {
+    "use strict";
+
+    const search = {
 
         /**
          * Gets the description text for an animal result
          */
         description: function(r) {
-            var banner = [];
-            if ($.trim(r.HIDDENANIMALDETAILS) != "") {
+            let banner = [];
+            if (common.trim(r.HIDDENANIMALDETAILS) != "") {
                 banner.push(r.HIDDENANIMALDETAILS);
             }
-            if ($.trim(r.MARKINGS) != "") {
+            if (common.trim(r.MARKINGS) != "") {
                 banner.push(r.MARKINGS);
             }
-            if ($.trim(r.ANIMALCOMMENTS) != "") {
+            if (common.trim(r.ANIMALCOMMENTS) != "") {
                 banner.push(r.ANIMALCOMMENTS);
             }
             return banner.join(". ");
         },
 
         render: function() {
-            var h = [];
+            let h = [];
             h.push('<div id="asm-content" class="ui-helper-reset ui-widget-content ui-corner-all" style="padding: 10px;">');
             if (controller.explain != "") {
                 h.push('<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em">' +
-                    '<p><span class="ui-icon ui-icon-search" style="float: left; margin-right: .3em;"></span>' +
+                    '<p><span class="ui-icon ui-icon-search"></span>' +
                     controller.explain + "</p></div>");
             }
             if (controller.results.length == 0) {
@@ -73,7 +74,11 @@ $(function() {
                         }
                         h.push('</span>');
                     }
-                    else if (r.CURRENTOWNERID != null) {
+                    else if (r.OWNERID && r.OWNERID != r.CURRENTOWNERID) {
+                        h.push(_("Owner"));
+                        h.push(html.icon("right") + ' ' + html.person_link(r.OWNERID, r.OWNERNAME));
+                    }
+                    else if (r.CURRENTOWNERID) {
                         h.push(r.DISPLAYLOCATIONNAME);
                         h.push(html.icon("right") + ' ' + html.person_link(r.CURRENTOWNERID, r.CURRENTOWNERNAME));
                     }
@@ -98,8 +103,23 @@ $(function() {
                     h.push('<br/>');
                     h.push(r.OWNERADDRESS);
                     h.push('<br />');
+                    h.push(r.OWNERTOWN + ", " + r.OWNERCOUNTY + " " + r.OWNERPOSTCODE);
+                    h.push('<br />');
                     h.push('<span class="asm-search-personflags">' + r.LICENCETYPENAME + ', ' + format.date(r.ISSUEDATE) + 
                         ' - ' + format.date(r.EXPIRYDATE) + '</span>');
+                    h.push('<br/>');
+                    h.push(html.truncate(r.COMMENTS));
+                    h.push('</p>');
+                }
+                else if (r.RESULTTYPE == "LOG") {
+                    if (controller.results.length == 1) {
+                        common.route(r.RECORDTYPE + '_log?id=' + r.LINKID);
+                    }
+                    h.push('<p class="asm-search-result"><span class="asm-search-name">');
+                    h.push(html.icon("log", _("Log")));
+                    h.push('<a href="' + r.RECORDTYPE + '_log?id=' + r.LINKID + '">' + r.RECORDDETAIL + '</a></span> ');
+                    h.push('<br />');
+                    h.push('<span class="asm-search-personflags">' + r.LOGTYPENAME + '</span>');
                     h.push('<br/>');
                     h.push(html.truncate(r.COMMENTS));
                     h.push('</p>');
@@ -116,9 +136,31 @@ $(function() {
                     h.push('<a href="person_donations?id=' + r.ID + '">' + html.icon("donation", _("Jump to donations")) + '</a>');
                     h.push('<a href="person_movements?id=' + r.ID + '">' + html.icon("movement", _("Jump to movements")) + '</a>');
                     h.push('<br/>');
+                    if (edit_header.person_flags(r)) { 
+                        h.push('<span class="asm-search-personflags">' + edit_header.person_flags(r) + '</span>');
+                        h.push('<br/>'); 
+                    }
                     h.push(r.OWNERADDRESS);
                     h.push('<br />');
-                    h.push('<span class="asm-search-personflags">' + edit_header.person_flags(r) + '</span>');
+                    h.push(r.OWNERTOWN + ", " + r.OWNERCOUNTY + " " + r.OWNERPOSTCODE);
+                    h.push('<br />');
+                    h.push(html.truncate(r.COMMENTS));
+                    h.push('</p>');
+                }
+                if (r.RESULTTYPE == "VOUCHER") {
+                    if (controller.results.length == 1) {
+                        common.route("person_vouchers?id=" + r.OWNERID);
+                    }
+                    h.push('<p class="asm-search-result"><span class="asm-search-name">');
+                    h.push(html.icon("voucher", _("Voucher")));
+                    h.push('<a href="person_vouchers?id=' + r.OWNERID + '">' + r.OWNERNAME  + ' - ' + r.VOUCHERCODE + '</a></span> ');
+                    h.push('<br/>');
+                    h.push(r.OWNERADDRESS);
+                    h.push('<br />');
+                    h.push(r.OWNERTOWN + ", " + r.OWNERCOUNTY + " " + r.OWNERPOSTCODE);
+                    h.push('<br />');
+                    h.push('<span class="asm-search-personflags">' + r.VOUCHERNAME + ', ' + format.date(r.DATEISSUED) + 
+                        ' - ' + format.date(r.DATEREDEEMED) + '</span>');
                     h.push('<br/>');
                     h.push(html.truncate(r.COMMENTS));
                     h.push('</p>');

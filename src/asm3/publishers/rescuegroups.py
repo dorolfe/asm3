@@ -38,7 +38,7 @@ class RescueGroupsPublisher(FTPPublisher):
 
     def rgYesNoBlank(self, v):
         """
-        Returns 0 == Yes, 1 == No, 2 == Empty string
+        Returns 0 == Yes, 1 == No, 2 or 3 == Empty string
         """
         if v == 0: return "Yes"
         elif v == 1: return "No"
@@ -66,23 +66,27 @@ class RescueGroupsPublisher(FTPPublisher):
             self.setLastError("No RescueGroups.org shelter id has been set.")
             self.cleanup()
             return
+
+        # NOTE: We still publish even if there are no animals. This prevents situations
+        # where the last animal can't be removed from rescuegroups because the shelter
+        # has no animals to send.
         animals = self.getMatchingAnimals()
         if len(animals) == 0:
-            self.setLastError("No animals found to publish.")
-            self.cleanup()
-            return
+            self.logError("No animals found to publish, sending empty file.")
 
         if not self.openFTPSocket(): 
             self.setLastError("Failed opening FTP socket.")
-            if self.logSearch("530 Login") != -1:
-                self.log("Found 530 Login incorrect: disabling RescueGroups publisher.")
-                asm3.configuration.publishers_enabled_disable(self.dbo, "rg")
+            # NOTE: RescueGroups started returning transient 530 errors June 2022
+            #       Disabled this to stop the publisher repeatedly getting disabled
+            #if self.logSearch("530 Login") != -1:
+            #    self.log("Found 530 Login incorrect: disabling RescueGroups publisher.")
+            #    asm3.configuration.publishers_enabled_disable(self.dbo, "rg")
             self.cleanup()
             return
 
         # Do the images first
         self.mkdir("import")
-        self.chdir("import")
+        self.chdir("import", "import")
         self.mkdir("pictures")
         self.chdir("pictures", "import/pictures")
 
@@ -142,7 +146,7 @@ class RescueGroupsPublisher(FTPPublisher):
         # rescue ID (ID of animal at the rescue)
         line.append("\"%s\"" % an["SHELTERCODE"])
         # Name
-        line.append("\"%s\"" % an["ANIMALNAME"].replace("\"", "\"\""))
+        line.append("\"%s\"" % an["ANIMALNAME"])
         # Summary (no idea what this is for)
         line.append("\"\"")
         # Species
@@ -222,4 +226,4 @@ class RescueGroupsPublisher(FTPPublisher):
                         line.append("\"\"")
         else:
             line.append("\"\",\"\",\"\",\"\"")
-        return ",".join(line)
+        return self.csvLine(line)

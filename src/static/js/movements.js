@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, edit_header, header, html, tableform, validate */
 
 $(function() {
 
-    var movements = {
+    "use strict";
+
+    const movements = {
 
         lastanimal: null,
         lastperson: null,
@@ -11,7 +12,7 @@ $(function() {
 
         model: function() {
             // Filter list of chooseable types
-            var choosetypes = [];
+            let choosetypes = [];
             $.each(controller.movementtypes, function(i, v) {
                 if (v.ID == 0) {
                     v.MOVEMENTTYPE = _("Reservation");
@@ -20,12 +21,12 @@ $(function() {
                 else if (v.ID == 8 && !config.bool("DisableRetailer")) {
                     choosetypes.push(v);
                 }
-                else if (v.ID !=8 && v.ID != 9 && v.ID != 10 && v.ID != 11 && v.ID != 12) {
+                else if (v.ID < 8 || v.ID > 13) {
                     choosetypes.push(v);
                 }
             });
 
-            var dialog = {
+            const dialog = {
                 add_title: _("Add movement"),
                 edit_title: _("Edit movement"),
                 edit_perm: 'camv',
@@ -55,44 +56,56 @@ $(function() {
                 ]
             };
 
-            var table = {
+            const table = {
                 rows: controller.rows,
                 idcolumn: "ID",
                 edit: function(row) {
-                    tableform.fields_populate_from_json(dialog.fields, row);
-                    movements.type_change(); 
-                    movements.returndate_change();
-                    tableform.dialog_show_edit(dialog, row)
-                        .then(function() {
-                            if (!movements.validation()) { tableform.dialog_enable_buttons(); return; }
+                    tableform.dialog_show_edit(dialog, row, {
+                        onvalidate: function() {
+                            return movements.validation();
+                        },
+                        onchange: function() {
                             tableform.fields_update_row(dialog.fields, row);
                             movements.set_extra_fields(row);
-                            return tableform.fields_post(dialog.fields, "mode=update&movementid=" + row.ID, "movement");
-                        })
-                        .then(function(response) {
-                            tableform.table_update(table);
-                            tableform.dialog_close();
-                        })
-                        .fail(function() {
-                            tableform.dialog_enable_buttons();
-                        });
+                            tableform.fields_post(dialog.fields, "mode=update&movementid=" + row.ID, "movement")
+                                .then(function(response) {
+                                    tableform.table_update(table);
+                                    tableform.dialog_close();
+                                })
+                                .fail(function() {
+                                    tableform.dialog_enable_buttons();
+                                });
+                        },
+                        onload: function() {
+                            tableform.fields_populate_from_json(dialog.fields, row);
+                            movements.type_change(); 
+                            movements.returndate_change();
+                        }
+                    });
                 },
                 overdue: function(row) {
-                    // If this is the reservation book, overdue is determined by reservation being older than a week
+                    // If this is the reservation book, overdue is determined by reservation being 
+                    // older than a pre-set period (default 1 week)
                     if (controller.name == "move_book_reservation" && row.RESERVATIONDATE) {
-                        var od = format.date_js(row.RESERVATIONDATE);
-                        od.setDate(od.getDate() + 7);
+                        let od = format.date_js(row.RESERVATIONDATE), odd = config.integer("ReservesOverdueDays");
+                        if (!odd) { odd = 7; }
+                        od.setDate(od.getDate() + odd);
                         return od < common.today_no_time();
                     }
                     return false;
                 },
                 complete: function(row) {
-                    // If this is the trial book, completion is determined by trial end date passing
-                    if (controller.name == "move_book_trial_adoption" && row.ISTRAIL == 1 && row.TRIALENDDATE && format.date_js(row.TRIALENDDATE) <= new Date()) {
-                        return true;
+                    // If this is the trial book, completion is determined by trial end date passing or the flag being removed
+                    if (controller.name == "move_book_trial_adoption"){
+                        if (row.ISTRIAL == 1 && row.TRIALENDDATE && format.date_js(row.TRIALENDDATE) <= new Date()) {
+                            return true;
+                        }
+                        if (row.ISTRIAL == 0) {
+                            return true;
+                        }
                     }
                     // If this is a cancelled reservation
-                    if (row.MOVEMENTTYPE == 0 && row.RESERVATIONCANCELLEDDATE != null) {
+                    if (row.MOVEMENTTYPE == 0 && row.RESERVATIONCANCELLEDDATE && format.date_js(row.RESERVATIONCANCELLEDDATE) <= new Date()) {
                         return true;
                     }
                     // If the movement is returned and not in the future
@@ -104,11 +117,26 @@ $(function() {
                         return true;
                     }
                 },
+                button_click: function() {
+                    if ($(this).attr("data-link")) {
+                        window.open($(this).attr("data-link"));
+                    }
+                    else if ($(this).attr("data-animalid")) {
+                        let animalid = $(this).attr("data-animalid");
+                        $("[data-animalid='" + animalid + "']").each(function() {
+                            if ($(this).is(":visible")) {
+                                $(this).closest("tr").find("input[type='checkbox']").prop("checked", true);
+                                $(this).closest("tr").addClass("ui-state-highlight");
+                            }
+                        });
+                        tableform.table_update_buttons(table, buttons);
+                    }
+                },
                 columns: [
                     { field: "MOVEMENTNAME", display: _("Type") }, 
                     { field: "MOVEMENTDATE", display: _("Date"), 
                         initialsort: controller.name != "move_book_trial_adoption", 
-                        initialsortdirection: controller.name == "move_book_reservation" ? "asc" : "desc", 
+                        initialsortdirection: "desc", 
                         formatter: function(row, v) { 
                             // If we're only a reservation, use the reserve date instead
                             if (row.MOVEMENTTYPE == 0) {
@@ -120,6 +148,12 @@ $(function() {
                                 return format.date(row.RESERVATIONDATE);
                             }
                             return format.date(row.MOVEMENTDATE);
+                        }
+                    },
+                    { field: "RETURNDATE", display: _("Returning"), formatter: tableform.format_date, 
+                        hideif: function(row) {
+                            // This is for future returns, so only show on retailer/foster book
+                            return controller.name != "move_book_foster" && controller.name != "move_book_retailer";
                         }
                     },
                     { field: "RESERVATIONSTATUSNAME", display: _("Status"),
@@ -146,7 +180,7 @@ $(function() {
                     },
                     { field: "RETURNDATE", display: _("Returned"), 
                         formatter: function(row) {
-                            var rv = format.date(row.RETURNDATE);
+                            let rv = format.date(row.RETURNDATE);
                             if (row.RETURNDATE && (row.MOVEMENTTYPE == 1 || row.MOVEMENTTYPE == 5)) {
                                 rv += " <br/>" + row.RETURNEDREASONNAME;
                             }
@@ -183,6 +217,7 @@ $(function() {
                     },
                     { field: "IMAGE", display: "", 
                         formatter: function(row) {
+                            if (!row.ANIMALNAME) { return ""; }
                             return html.animal_link_thumb_bare(row);
                         },
                         hideif: function(row) {
@@ -194,7 +229,13 @@ $(function() {
                     },
                     { field: "ANIMAL", display: _("Animal"), 
                         formatter: function(row) {
-                            return html.animal_link(row);
+                            if (!row.ANIMALNAME) { return ""; }
+                            let s = html.animal_link(row);
+                            if (controller.name == "move_book_reservation") {
+                                s += '<button data-icon="check" data-text="false" data-animalid="' + row.ANIMALID + '">' +
+                                    _("Select all reservations for this animal") + '</button>';
+                            }
+                            return s;
                         },
                         hideif: function(row) {
                             // Don't show this column for animal_movement
@@ -203,8 +244,14 @@ $(function() {
                     },
                     { field: "PERSON", display: _("Person"),
                         formatter: function(row) {
-                            if (row.OWNERID) { return html.person_link_address(row); }
-                            return "";
+                            if (!row.OWNERID) { return ""; }
+                            let s = "";
+                            if (controller.name == "move_book_reservation") {
+                                s += '<button style="float: right" data-asmicon="media" data-text="false" data-link="person_media?id=' + row.OWNERID + '">' +
+                                    _("View media for this person") + '</button>';
+                            }
+                            s += html.person_link_address(row);
+                            return s;
                         },
                         hideif: function(row) {
                             return controller.name == "move_book_retailer" || controller.name == "person_movements";
@@ -225,11 +272,14 @@ $(function() {
                             return config.bool("DisableRetailer") || controller.name == "move_book_foster" || controller.name == "move_book_reservation";
                         }
                     },
-                    { field: "ANIMALAGE", display: _("Age"), 
+                    { field: "ANIMALAGE", display: _("Age"),
                         hideif: function(row) { 
                             // Only show age in the adopted/unneutered and foster books
                             return controller.name != "move_book_unneutered" && controller.name != "move_book_foster" ; 
-                        } 
+                        },
+                        sorttext: function(row) {
+                            return row.DATEOFBIRTH;
+                        }
                     },
                     { field: "ADOPTIONNUMBER", display: _("Movement Number"),
                         hideif: function(row) {
@@ -243,7 +293,7 @@ $(function() {
                 ]
             };
 
-            var buttons = [
+            const buttons = [
                 { id: "new", text: _("New Movement"), icon: "new", enabled: "always", perm: "aamv", 
                      click: function() { 
                         tableform.dialog_show_add(dialog, {
@@ -253,7 +303,7 @@ $(function() {
                             onadd: function() {
                                 tableform.fields_post(dialog.fields, "mode=create", "movement")
                                     .then(function(response) {
-                                        var row = {};
+                                        let row = {};
                                         row.ID = response;
                                         tableform.fields_update_row(dialog.fields, row);
                                         movements.set_extra_fields(row);
@@ -314,37 +364,35 @@ $(function() {
                             }
                         });
                      } 
-                 },
-                 { id: "delete", text: _("Delete"), icon: "delete", enabled: "multi", perm: "damv", 
-                     click: function() { 
-                         tableform.delete_dialog()
-                             .then(function() {
-                                 tableform.buttons_default_state(buttons);
-                                 var ids = tableform.table_ids(table);
-                                 return common.ajax_post("movement", "mode=delete&ids=" + ids);
-                             })
-                             .then(function() {
-                                 tableform.table_remove_selected_from_json(table, controller.rows);
-                                 tableform.table_update(table);
-                             });
-                     } 
-                 },
-                 { id: "document", text: _("Document"), icon: "document", enabled: "one", perm: "gaf", 
-                     tooltip: _("Generate a document from this movement"), type: "buttonmenu" 
-                 },
-                 { id: "toadoption", text: _("To Adoption"), icon: "person", enabled: "one", perm: "camv",
-                     tooltip: _("Convert this reservation to an adoption"),
-                     hideif: function() {
+                },
+                { id: "delete", text: _("Delete"), icon: "delete", enabled: "multi", perm: "damv", 
+                    click: async function() { 
+                        await tableform.delete_dialog();
+                        tableform.buttons_default_state(buttons);
+                        let ids = tableform.table_ids(table);
+                        await common.ajax_post("movement", "mode=delete&ids=" + ids);
+                        tableform.table_remove_selected_from_json(table, controller.rows);
+                        tableform.table_update(table);
+                    } 
+                },
+                { id: "document", text: _("Document"), icon: "document", enabled: "one", perm: "gaf", 
+                    tooltip: _("Generate a document from this movement"), type: "buttonmenu" 
+                },
+                { id: "toadoption", text: _("To Adoption"), icon: "person", enabled: "one", perm: "camv",
+                    tooltip: _("Convert this reservation to an adoption"),
+                    hideif: function() {
                         return controller.name.indexOf("reserv") == -1;
-                     },
-                     click: function() { 
-                        var row = tableform.table_selected_row(table);
+                    },
+                    click: function() { 
+                        let row = tableform.table_selected_row(table);
                         tableform.fields_populate_from_json(dialog.fields, row);
                         movements.type_change(); 
                         movements.returndate_change();
                         tableform.dialog_show_edit(dialog, row, {
+                            onvalidate: function() {
+                                return movements.validation();
+                            },
                             onchange: function() {
-                                if (!movements.validation()) { tableform.dialog_enable_buttons(); return; }
                                 tableform.fields_update_row(dialog.fields, row);
                                 movements.set_extra_fields(row);
                                 tableform.fields_post(dialog.fields, "mode=update&movementid=" + row.ID, "movement", function(response) {
@@ -363,39 +411,133 @@ $(function() {
                                 movements.returndate_change();
                             }
                         });
-                     }
-                 },
-                 { id: "return", text: _("Return"), icon: "complete", enabled: "one", perm: "camv",
-                     tooltip: _("Return this movement and bring the animal back to the shelter"),
-                     hideif: function() {
-                         return controller.name.indexOf("move_book_recent") == -1 && controller.name.indexOf("move_book_foster") == -1;
-                     },
-                     click: function() {
-                        var row = tableform.table_selected_row(table);
+                    }
+                },
+                { id: "cancel", text: _("Cancel"), icon: "cross", enabled: "multi", perm: "camv",
+                    tooltip: _("Cancel the selected reservations"),
+                    hideif: function() { return controller.name != "move_book_reservation"; },
+                    click: async function() {
+                        await common.ajax_post("movement", "mode=cancelreserve&ids=" + tableform.table_ids(table));
+                        $.each(tableform.table_selected_rows(table), function(i, v) {
+                            v.RESERVATIONCANCELLEDDATE = format.date_now_iso();
+                        });
+                        tableform.buttons_default_state(buttons);
+                        tableform.table_update(table);
+                    }
+                },
+                { id: "return", text: _("Return"), icon: "complete", enabled: "one", perm: "camv",
+                    tooltip: _("Return this movement and bring the animal back to the shelter"),
+                    hideif: function() {
+                        return controller.name.indexOf("move_book_recent") == -1 && controller.name.indexOf("move_book_foster") == -1;
+                    },
+                    click: function() {
+                        let row = tableform.table_selected_row(table);
                         tableform.fields_populate_from_json(dialog.fields, row);
                         movements.type_change(); 
                         movements.returndate_change();
                         tableform.dialog_show_edit(dialog, row, { 
+                            onvalidate: function() {
+                                return movements.validation();
+                            },
                             onchange: function() {
-                                if (!movements.validation()) { tableform.dialog_enable_buttons(); return; }
                                 tableform.fields_update_row(dialog.fields, row);
                                 movements.set_extra_fields(row);
-                                tableform.fields_post(dialog.fields, "mode=update&movementid=" + row.ID, "movement", function(response) {
-                                    tableform.table_update(table);
-                                    tableform.dialog_close();
-                                },
-                                function(response) {
-                                    tableform.dialog_error(response);
-                                    tableform.dialog_enable_buttons();
-                                });
+                                tableform.fields_post(dialog.fields, "mode=update&movementid=" + row.ID, "movement")
+                                    .then(function(response) {
+                                        tableform.table_update(table);
+                                        tableform.dialog_close();
+                                    })
+                                    .fail(function() {
+                                        tableform.dialog_enable_buttons();
+                                    });
                             },
                             onload: function() {
                                 $("#returndate").val(format.date(new Date()));
                                 movements.returndate_change();
                             }
                         });
-                     }
-                 }
+                    }
+                },
+                { id: "trialfull", text: _("Full Adoption"), icon: "complete", enabled: "multi", perm: "camv",
+                    tooltip: _("Convert this movement from a trial to full adoption"),
+                    hideif: function() {
+                        return controller.name.indexOf("move_book_trial") == -1;
+                    },
+                    click: async function() {
+                        await common.ajax_post("movement", "mode=trialfull&ids=" + tableform.table_ids(table));
+                        $.each(tableform.table_selected_rows(table), function(i, v) {
+                            v.ISTRIAL = 0;
+                            if (!v.TRIALENDDATE) { v.TRIALENDDATE = format.date_now_iso(); }
+                        });
+                        tableform.buttons_default_state(buttons);
+                        tableform.table_update(table);
+                    }
+                },
+                { id: "email", text: _("Email"), icon: "email", enabled: "multi", perm: "emo",
+                    tooltip: _("BCC all the people linked to these movements"),
+                    hideif: function() {
+                        return controller.name != "move_book_reservation";
+                    },
+                    click: function() {
+                        // Find the first animal id and person id for use with templates,
+                        // also build a list of all the personids to send to the back end
+                        // so that logging of the email to their record can be done
+                        let animalid = 0, personid = 0, personids = [], bccemails = [];
+                        $.each(tableform.table_selected_rows(table), function(i, row) {
+                            if (!animalid) { animalid = row.ANIMALID; }
+                            if (!personid) { personid = row.OWNERID; }
+                            personids.push(row.OWNERID);
+                            bccemails.push(row.EMAILADDRESS);
+                        });
+                        $("#emailform").emailform("show", {
+                            title: _("Email people linked to selected movements"),
+                            post: "movement",
+                            formdata: "mode=email&personids=" + personids.join(","),
+                            name: "",
+                            email: config.str("EmailAddress"),
+                            bccemail: bccemails.join(", "),
+                            subject: "",
+                            animalid: animalid,
+                            personid: personid,
+                            templates: controller.templates,
+                            logtypes: controller.logtypes,
+                            message: ""
+                        });
+                    }
+                },
+                { id: "checkout", text: _("Adopter Checkout"), icon: "email", enabled: "one", perm: "emo",
+                    tooltip: _("Send a checkout email to the adopter"),
+                    hideif: function() {
+                        return controller.name.indexOf("move_book_foster") != -1 ||
+                            controller.name.indexOf("move_book_soft_release") != -1 ||
+                            controller.name.indexOf("move_book_recent_other") != -1 ||
+                            config.str("AdoptionCheckoutProcessor") == "";
+                    },
+                    click: function() {
+                        let row = tableform.table_selected_row(table);
+                        if (row.MOVEMENTTYPE > 1) { 
+                            header.show_error(_("Adopter checkout only applies to reservation and adoption movements."));
+                            return;
+                        }
+                        if (!row.FEE) {
+                            header.show_error(_("No adoption fee has been set for this animal."));
+                            return;
+                        }
+                        $("#emailform").emailform("show", {
+                            title: _("Email link to adopter checkout"),
+                            post: "movement",
+                            formdata: "mode=checkout&id=" + row.ID + "&animalid=" + row.ANIMALID + "&personid=" + row.OWNERID,
+                            name: row.OWNERNAME,
+                            email: row.EMAILADDRESS,
+                            subject: _("Adoption checkout for {0}").replace("{0}", row.ANIMALNAME),
+                            animalid: row.ANIMALID,
+                            personid: row.OWNERID,
+                            templates: controller.templates,
+                            logtypes: controller.logtypes,
+                            message: _("Please use the link below to sign adoption paperwork and pay the adoption fee.")
+                        });
+                    }
+                }
             ];
             this.dialog = dialog;
             this.buttons = buttons;
@@ -403,13 +545,14 @@ $(function() {
         },
 
         render: function() {
-            var s = "";
+            let s = "";
             this.model();
             s += tableform.dialog_render(this.dialog);
             s += '<div id="button-document-body" class="asm-menu-body">' +
                 '<ul class="asm-menu-list">' +
                 edit_header.template_list(controller.templates, "MOVEMENT", 0) +
-                '</ul></div>';
+                '</ul></div>' + 
+                '<div id="emailform"></div>';
             if (controller.name == "animal_movements") {
                 s += edit_header.animal_edit_header(controller.animal, "movements", controller.tabcounts);
             }
@@ -430,6 +573,8 @@ $(function() {
             if (controller.name == "animal_movements" || controller.name == "person_movements") {
                 $(".asm-tabbar").asmtabs();
             }
+            
+            $("#emailform").emailform();
 
             tableform.dialog_bind(this.dialog);
             tableform.buttons_bind(this.buttons);
@@ -477,14 +622,14 @@ $(function() {
             $(".templatelink").click(function() {
                 // Update the href as it is clicked so default browser behaviour
                 // continues on to open the link in a new window
-                var template_name = $(this).attr("data");
+                let template_name = $(this).attr("data");
                 $(this).prop("href", "document_gen?linktype=MOVEMENT&id=" + tableform.table_selected_row(movements.table).ID + "&dtid=" + template_name);
             });
 
         },
 
         warnings: function() {
-            var p = movements.lastperson, a = movements.lastanimal, warn = [];
+            let p = movements.lastperson, a = movements.lastanimal, warn = [];
             tableform.dialog_error("");
 
             // None of these warnings are valid if this isn't a reservation, adoption or a reclaim
@@ -508,6 +653,11 @@ $(function() {
                     warn.push(_("This animal is part of a cruelty case and should not leave the shelter."));
                 }
 
+                // Outstanding medical
+                if (config.bool("WarnOSMedical") && a.HASOUTSTANDINGMEDICAL == 1) {
+                    warn.push(_("This animal has outstanding medical treatments."));
+                }
+
                 // Quarantined
                 if (a.ISQUARANTINE == 1) {
                     warn.push(_("This animal is currently quarantined and should not leave the shelter."));
@@ -524,12 +674,12 @@ $(function() {
                 }
 
                 // Check for bonded animals and warn
-                if (a.BONDEDANIMALID != "0" || a.BONDEDANIMAL2ID != "0") {
-                    var bw = "";
-                    if (a.BONDEDANIMAL1NAME != "" && a.BONDEDANIMAL1NAME != null) {
+                if (a.BONDEDANIMALID || a.BONDEDANIMAL2ID) {
+                    let bw = "";
+                    if (a.BONDEDANIMAL1NAME) {
                         bw += a.BONDEDANIMAL1CODE + " - " + a.BONDEDANIMAL1NAME;
                     }
-                    if (a.BONDEDANIMAL2NAME != "" && a.BONDEDANIMAL2NAME != null) {
+                    if (a.BONDEDANIMAL2NAME) {
                         if (bw != "") { bw += ", "; }
                         bw += a.BONDEDANIMAL2CODE + " - " + a.BONDEDANIMAL2NAME;
                     }
@@ -571,6 +721,11 @@ $(function() {
                     warn.push(_("This person has previously surrendered an animal."));
                 }
 
+                // Person at this address previously banned?
+                if (p.BANNEDADDRESS > 0 && config.bool("WarnBannedAddress")) {
+                    warn.push(_("This person lives at the same address as someone who was previously banned."));
+                }
+
                 // Does this owner live in the same postcode area as the animal's
                 // original owner?
                 if ( format.postcode_prefix($(".animalchooser-oopostcode").val()) == format.postcode_prefix(p.OWNERPOSTCODE) ||
@@ -596,10 +751,11 @@ $(function() {
 
         validation: function() {
 
-            validate.reset();
+            validate.reset("dialog-tableform");
+            let mt = $("#type").val();
 
             // Movement needs a reservation date or movement type > 0
-            if ($("#type").val() == 0 && $("#reservationdate").val() == "") {
+            if (mt == 0 && $("#reservationdate").val() == "") {
                 validate.notblank([ "reservationdate" ]);
                 tableform.dialog_error(_("A movement must have a reservation date or type."));
                 return false;
@@ -615,7 +771,6 @@ $(function() {
             // Movement types 4 (escaped), 6 (stolen), 7 (released to wild)
             // don't need a person, but all other movements do
             if ($("#person").val() == "") {
-                var mt = $("#type").val();
                 if (mt != 4 && mt != 6 && mt != 7) {
                     tableform.dialog_error(_("This type of movement requires a person."));
                     validate.highlight("person");
@@ -624,10 +779,13 @@ $(function() {
             }
 
             // All movements require an animal
-            if ($("#animal").val() == "") {
-                tableform.dialog_error(_("Movements require an animal"));
-                validate.highlight("animal");
-                return false;
+            if ($("#animal").val() == "0") {
+                // Except reservations if the option is on
+                if (mt != 0 || !config.bool("MovementPersonOnlyReserves")) {
+                    tableform.dialog_error(_("Movements require an animal"));
+                    validate.highlight("animal");
+                    return false;
+                }
             }
 
             return true;
@@ -639,8 +797,13 @@ $(function() {
          * extra lookup fields.
          */
         set_extra_fields: function(row) {
-            row.ANIMALNAME = movements.lastanimal.ANIMALNAME;
-            row.SHELTERCODE = movements.lastanimal.SHELTERCODE;
+            if (movements.lastanimal) {
+                row.ANIMALNAME = movements.lastanimal.ANIMALNAME;
+                row.SHELTERCODE = movements.lastanimal.SHELTERCODE;
+                row.AGEGROUP = movements.lastanimal.AGEGROUP;
+                row.SEX = movements.lastanimal.SEXNAME;
+                row.SPECIESNAME = movements.lastanimal.SPECIESNAME;
+            }
             if (movements.lastperson) {
                 row.OWNERNAME = movements.lastperson.OWNERNAME;
                 row.OWNERADDRESS = movements.lastperson.OWNERADDRESS;
@@ -659,13 +822,14 @@ $(function() {
             else {
                 row.RETAILERNAME = "";
             }
-            row.AGEGROUP = movements.lastanimal.AGEGROUP;
-            row.SEX = movements.lastanimal.SEXNAME;
-            row.SPECIESNAME = movements.lastanimal.SPECIESNAME;
             row.MOVEMENTNAME = common.get_field(controller.movementtypes, row.MOVEMENTTYPE, "MOVEMENTTYPE");
+            row.RETURNEDREASONNAME = common.get_field(controller.returncategories, row.RETURNEDREASONID, "REASONNAME");
             row.RESERVATIONSTATUSNAME = common.get_field(controller.reservationstatuses, row.RESERVATIONSTATUSID, "STATUSNAME");
-            if (row.RESERVATIONDATE != null && row.RESERVATIONCANCELLEDDATE == null && !row.MOVEMENTDATE) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 9, "MOVEMENTTYPE"); }
-            if (row.RESERVATIONDATE != null && row.RESERVATIONCANCELLEDDATE != null && !row.MOVEMENTDATE) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 10, "MOVEMENTTYPE"); }
+            if (row.RESERVATIONDATE != null && !row.RESERVATIONCANCELLEDDATE && !row.MOVEMENTDATE) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 9, "MOVEMENTTYPE"); }
+            if (row.RESERVATIONDATE != null && row.RESERVATIONCANCELLEDDATE && format.date_js(row.RESERVATIONCANCELLEDDATE) <= new Date() && !row.MOVEMENTDATE) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 10, "MOVEMENTTYPE"); }
+            if (row.MOVEMENTTYPE == 1 && row.ISTRIAL == 1) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 11, "MOVEMENTTYPE"); }
+            if (row.MOVEMENTTYPE == 2 && row.ISPERMANENTFOSTER == 1) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 12, "MOVEMENTTYPE"); }
+            if (row.MOVEMENTTYPE == 7 && movements.lastanimal && movements.lastanimal.SPECIESID == 2) { row.MOVEMENTNAME = common.get_field(controller.movementtypes, 13, "MOVEMENTTYPE"); }
         },
 
         /** When the animal changes, set the name of the "Release to Wild" movement 
@@ -682,7 +846,7 @@ $(function() {
 
         /** Fires whenever the movement type box is changed */
         type_change: function() {
-            var mt = $("#type").val();
+            let mt = $("#type").val();
             // Show trial fields if option is set and the movement is an adoption
             if (config.bool("TrialAdoptions") && mt == 1) {
                 $("#trial").closest("tr").find("label").html(_("Trial"));
@@ -716,7 +880,7 @@ $(function() {
                 $("#retailer").closest("tr").hide();
             }
             // Show the insurance row for adoptions
-            if (mt == 1) {
+            if (mt == 1 && !config.bool("DontShowInsurance")) {
                 $("#insurance").closest("tr").fadeIn();
             }
             else {
@@ -743,7 +907,7 @@ $(function() {
                 $("#returndate").closest("tr").fadeIn();
             }
             // If the movement is one that doesn't require a person, hide the person row
-            if (mt == 4 || mt == 6 || mt == 7) {
+            if (mt == 4 || mt == 6) {
                 $("#person").closest("tr").fadeOut();
             }
             else {
@@ -772,6 +936,7 @@ $(function() {
             common.widget_destroy("#animal");
             common.widget_destroy("#person");
             common.widget_destroy("#retailer");
+            common.widget_destroy("#emailform");
             tableform.dialog_destroy();
             this.lastanimal = null;
             this.lastperson = null;
@@ -781,7 +946,7 @@ $(function() {
         name: "movements",
         animation: function() { return controller.name.indexOf("move_book") == 0 ? "book" : "formtab"; },
         title:  function() { 
-            var t = "";
+            let t = "";
             if (controller.name == "animal_movements") {
                 t = common.substitute(_("{0} - {1} ({2} {3} aged {4})"), { 
                     0: controller.animal.ANIMALNAME, 1: controller.animal.CODE, 2: controller.animal.SEXNAME,

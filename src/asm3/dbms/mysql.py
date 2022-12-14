@@ -37,6 +37,9 @@ class DatabaseMySQL(Database):
     def ddl_drop_index(self, name, table):
         return "DROP INDEX %s ON %s" % (name, table)
 
+    def ddl_drop_notnull(self, table, column, existingtype):
+        return "ALTER TABLE %s MODIFY %s %s NULL" % (table, column, existingtype)
+
     def ddl_modify_column(self, table, column, newtype, using = ""):
         return "ALTER TABLE %s MODIFY %s %s" % (table, column, newtype)
 
@@ -46,6 +49,7 @@ class DatabaseMySQL(Database):
         if s is None: return ""
         if asm3.utils.is_str(s):
             s = MySQLdb.escape_string(s)
+            s = asm3.utils.bytes2str(s) # MySQLdb.escape_string can return bytes on python3
         elif asm3.utils.is_unicode(s):
             # Encode the string as UTF-8 for MySQL escape_string 
             # then decode it back into unicode before continuing
@@ -64,7 +68,16 @@ class DatabaseMySQL(Database):
         """ Writes a database independent cast for expr to a char """
         return self.sql_cast(expr, "CHAR")
 
+    def sql_regexp_replace(self, fieldexpr, pattern="?", replacestr="?"):
+        """ Writes a regexp replace expression that replaces characters matching pattern with replacestr """
+        if pattern != "?": pattern = "'%s'" % pattern
+        if replacestr != "?": replacestr = "'%s'" % self.escape(replacestr)
+        return "REGEXP_REPLACE(%s, %s, %s)" % (fieldexpr, pattern, replacestr)
+
     def sql_zero_pad_left(self, fieldexpr, digits):
         """ Writes a function that zero pads an expression with zeroes to digits """
         return "LPAD(%s, %s, '0')" % (fieldexpr, digits)
+
+    def vacuum(self, tablename=""):
+        self.execute("OPTIMIZE TABLE %s" % tablename)
 

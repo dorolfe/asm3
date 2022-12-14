@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, tableform, validate */
 
 $(function() {
 
-    var csvexport = {
+    "use strict";
+
+    const csvexport = {
 
         render: function() {
             return [
@@ -18,11 +19,12 @@ $(function() {
                 '<label for="filter">' + _("Filter") + '</label>',
                 '</td>',
                 '<td>',
-                '<select id="filter" name="filter" class="asm-selectbox">',
+                '<select id="filter" name="filter" class="asm-selectbox asm-doubleselectbox">',
                 '<option value="all">' + _("All Animals") + '</option>',
-                '<option value="shelter">' + _("All On-Shelter Animals") + '</option>',
+                '<option value="shelter" selected="selected">' + _("All On-Shelter Animals") + '</option>',
                 '<option value="selshelter">' + _("Selected On-Shelter Animals") + '</option>',
                 '<option value="nonshelter">' + _("Non-Shelter Animals") + '</option>',
+                '<option value="where">' + _("Custom WHERE clause") + '</option>',
                 '</select>',
                 '</td>',
                 '</tr>',
@@ -34,9 +36,23 @@ $(function() {
                 '<input id="animals" name="animals" type="hidden" class="asm-animalchoosermulti" />',
                 '</td>',
                 '</tr>',
+                '<tr id="whererow">',
+                '<td>',
+                '<label for="where">' + _("WHERE clause") + '</label>',
+                '<span id="callout-where" class="asm-callout">' + _("Supply a WHERE clause to the animal table. Eg: 'Archived=0 AND ShelterLocation=2'") + '</span>',
+                '</td>',
+                '<td>',
+                '<input id="where" name="where" type="text" class="asm-textbox" />',
+                '</td>',
+                '</tr>',
                 '<tr>',
-                '<td></td>',
-                '<td><input type="checkbox" name="includeimage" id="includeimage" /> <label for="includeimage">' + _("Include preferred photo") + '</label></td>',
+                '<td><label for="media">' + _("Media") + '</label></td>',
+                '<td><select id="media" name="media" class="asm-selectbox asm-doubleselectbox">',
+                '<option value="none" selected="selected">' + _("Do not include media") + '</option>',
+                '<option value="photo">' + _("Include primary photo") + '</option>',
+                '<option value="photos">' + _("Include all photos") + '</option>',
+                '<option value="all">' + _("Include all photos, documents and PDFs") + '</option>',
+                '</select></td>',
                 '</tr>',
                 '</table>',
                 '</form>',
@@ -53,13 +69,19 @@ $(function() {
                 $("#csvform").submit();
             });
 
-            $("#animalsrow").hide();
+            $("#animalsrow, #whererow").hide();
             $("#filter").change(function() {
                 if ($("#filter").select("value") == "selshelter") { 
                     $("#animalsrow").fadeIn(); 
                 }
                 else {
                     $("#animalsrow").fadeOut(); 
+                }
+                if ($("#filter").select("value") == "where") { 
+                    $("#whererow").fadeIn(); 
+                }
+                else {
+                    $("#whererow").fadeOut(); 
                 }
             });
         },

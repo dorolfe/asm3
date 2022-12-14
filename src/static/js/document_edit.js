@@ -1,37 +1,37 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true */
 /*global $, baseurl, buildno, jswindowprint, onlysavewhendirty, pdfenabled, visualaids, readonly, tinymce, tinyMCE */
 
 $(function() {
-   
-    var rw_toolbar = "save pdf print | undo redo | fontselect fontsizeselect | bold italic underline forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent pagebreak | link image";
-    var ro_toolbar = "pdf print";
 
-    // Set the containing div and textarea to the vertical 
-    // height of the viewport and 80% width
-    var h = $(window).height(),
-        w = Math.floor(($(window).width() / 100.0) * 80.0);
+    "use strict";
+   
+    let is_mobile = navigator.userAgent.match(/Android|iPhone|iPad|Kindle/i);
+    let rw_toolbar = "save pdf print | undo redo | fontselect fontsizeselect | bold italic underline forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent pagebreak | link image";
+    let ro_toolbar = "pdf print";
+
+    // Add the text direction options for RTL languages
+    let locale = $("#locale").val();
+    if (locale == "ar" || locale == "he") { rw_toolbar += " | ltr rtl"; }
+
+    // Set the containing div and textarea to the vertical height of the viewport
+    let h = $(window).height(),
+        w = $(window).width();
     // max-width is 775px
     if (w > 775) { w = 775; }
-    $("div").css({
-        height: h - 160,
-        width: w
-    });
-    $("#wp").css({
-        height: h - 160,
-        width: w
-    });
+    $("div").css({ height: h - 15, width: w });
+    $("#wp").css({ height: h - 15, width: w });
 
     tinymce.init({
         selector: "#wp",
-        theme: "modern",
-        content_css: "css?v=asm-tinymce.css&k=" + buildno,
+        branding: false,
+        content_css: "static/css/asm-tinymce.css?k=" + buildno,
         plugins: [
-            "advlist autolink lists link image charmap print preview",
+            "advlist autolink directionality lists link image charmap print preview",
             "hr anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen",
             "insertdatetime media nonbreaking save table contextmenu directionality",
             "emoticons template paste textcolor save"
             ],
         toolbar1: readonly ? ro_toolbar : rw_toolbar,
+        contextmenu: "", // allow the browser's default context menu for copy/paste
 
         // Disable some items if we're in read only mode
         menubar: !readonly,
@@ -81,10 +81,11 @@ $(function() {
 
             // Add a PDF button
             if (pdfenabled) {
-                ed.addButton("pdf", {
-                    title: "PDF",
-                    image: "static/images/icons/pdf.png",
-                    onclick: function() {
+                ed.ui.registry.addIcon("pdf", '<img src="static/images/ui/tinymce-pdf.png" />');
+                ed.ui.registry.addButton("pdf", {
+                    tooltip: "View this document as a PDF",
+                    icon: "pdf",
+                    onAction: function() {
                         $("input[name='mode']").val("pdf");
                         $("form").submit();
                     }
@@ -137,12 +138,7 @@ $(function() {
             // version of the document.
             // The user can also override this with a config option 
             // !jswindowprint (use iframe/window.print)
-            var ismobile = (navigator.userAgent.indexOf("ndroid") != -1 ||
-                navigator.userAgent.indexOf("iPhone") != -1 ||
-                navigator.userAgent.indexOf("iPad") != -1 ||
-                navigator.userAgent.indexOf("Kindle") != -1);
-            
-            if (ismobile || !jswindowprint) {
+            if (is_mobile || !jswindowprint) {
                 setTimeout(function() {
                     ed.addCommand("mcePrint", function() {
                         $("input[name='mode']").val("print");

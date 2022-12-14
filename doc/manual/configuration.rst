@@ -136,6 +136,14 @@ some of its standard pictures:
   instead of the default ASM splash screens. Your splash image should be
   400x200 pixels.
 
+* watermark.png – this should be a version of your logo with a transparent
+  background. If you supply a watermark image, then the watermark toolbar
+  button will appear on animal media tabs. This button will add the watermark
+  image to the bottom right of the chosen picture and the animal's name in the
+  lower left. Note that the original image will be changed, so you should
+  upload images multiple times if you want to retain a copy without the
+  watermark.
+
 System user accounts
 --------------------
 
@@ -167,8 +175,8 @@ or IPv6 prefixes. Eg:
 
    192.168.1.0/24 172.16.31.34 2001:db8:abcd:0012
 
-Location Filter
-^^^^^^^^^^^^^^^^
+Site and Location Filters
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Setting a location filter (a group of internal locations) for a user account
 will prevent that account from seeing or opening animals who are not in those
@@ -204,7 +212,36 @@ users see:
 
 * Retailer Animals: Allows the user to see animals currently with retailers
 
-* My Fosters: Restricts the user to ONLY see animals they are currently fostering
+* My Fosters: Allows the user to see animals that are fostered to the person
+  record linked to their user account.
+
+Two-Factor Authentication (2FA)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ASM supports two-factor authentication for user accounts with the Google
+Authenticator app for mobile devices. 
+
+.. image:: images/changeusersettings_2fa.png
+
+To enable it, log in with your user account, then choose "Change User Settings"
+from the user menu at the top right of the screen (the button with your
+username on it).
+
+Install the Google Authenticator app on your mobile device from the Play or
+iTunes store. Tick the box to enable 2FA and the screen will show you a
+QR code. In the Google Authenticator app, click the add button and choose "QR
+Code", then scan the on screen code with your camera. 
+
+An entry will appear in Google Authenticator for ASM (if you are self hosted)
+or sheltermanager (for sheltermanager.com customers) with your username and a
+time-based one time passcode that will update every 30 seconds. When you login
+in future, you will be challenged for this 2FA code from your mobile device. 
+
+.. image:: images/google_authenticator.png
+
+If you are ever locked out of your account because your mobile device is no
+longer available, you can disable 2FA by resetting your password from either
+the login screen, or via :menuselection:`Settings --> System user accounts`
 
 User roles
 ----------
@@ -299,6 +336,22 @@ person will be created.
 The net amount will be used as the payment amount and the PayPal transaction
 fee will be recorded with the payment.
 
+It is possible to override the payment type on a per transaction basis by
+editing the PayPal CSV file and adding a column named "ASM Payment Type". You
+can then assign values from your payment types lookup in this column. Note that
+they must match exactly (same case) the payment type name from your lookup. If
+the column does not exist, contains a blank or the system could not find a match
+then the payment type from the import screen will be used.
+
+Import a Stripe CSV file
+------------------------
+
+Similar to PayPal, ASM can import data from CSV files exported with the Export
+button on Stripe's payments screen.
+
+The Stripe fee will be recorded with the payment and the payment amount will
+have the fee deducted.
+
 Trigger Batch Processes
 -----------------------
 
@@ -307,8 +360,8 @@ cached versions of complex reports and figures.
 
 Ordinarily, users should have no need to trigger these batch processes
 manually, however after importing CSV data or making bulk data changes with
-queries, animal locations and historic figures data can get out of sync and
-needs to be recalculated/regenerated.
+queries, animal locations, person flags and historic figures data can get out
+of sync and need to be recalculated/regenerated.
 
 Some of these processes can take many minutes to run and may block use of the
 database for other users. They should be used sparingly.

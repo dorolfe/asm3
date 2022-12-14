@@ -49,12 +49,6 @@ class PetRescuePublisher(AbstractPublisher):
         self.log("'%s' is not a valid PetRescue breed, using default '%s'" % (bname, default_breed))
         return default_breed
 
-    def utf8_to_ascii(self, s):
-        """
-        PR return their responses as UTF8.
-        """
-        return asm3.utils.encode_html(asm3.utils.cunicode(s))
-
     def run(self):
         
         self.log("PetRescuePublisher starting...")
@@ -66,6 +60,8 @@ class PetRescuePublisher(AbstractPublisher):
 
         token = asm3.configuration.petrescue_token(self.dbo)
         all_desexed = asm3.configuration.petrescue_all_desexed(self.dbo)
+        #all_microchips = asm3.configuration.petrescue_all_microchips(self.dbo)
+        all_microchips = True # PetRescue have an option to hide them at their end now, so we always send them
         adoptable_in = asm3.configuration.petrescue_adoptable_in(self.dbo)
         postcode = asm3.configuration.organisation_postcode(self.dbo)
         suburb = asm3.configuration.organisation_town(self.dbo)
@@ -73,7 +69,10 @@ class PetRescuePublisher(AbstractPublisher):
         contact_name = asm3.configuration.organisation(self.dbo)
         contact_email = asm3.configuration.petrescue_email(self.dbo)
         if contact_email == "": contact_email = asm3.configuration.email(self.dbo)
-        contact_number = asm3.configuration.organisation_telephone(self.dbo)
+        phone_type = asm3.configuration.petrescue_phone_type(self.dbo)
+        contact_number = asm3.configuration.petrescue_phone_number(self.dbo)
+        if phone_type == "" or phone_type == "org": contact_number = asm3.configuration.organisation_telephone(self.dbo)
+        elif phone_type == "none": contact_number = ""
 
         if token == "":
             self.setLastError("No PetRescue auth token has been set.")
@@ -86,10 +85,10 @@ class PetRescuePublisher(AbstractPublisher):
         animals = self.getMatchingAnimals(includeAdditionalFields=True)
         processed = []
 
+        # Log that there were no animals, we still need to check
+        # previously sent listings
         if len(animals) == 0:
-            self.setLastError("No animals found to publish.")
-            self.cleanup()
-            return
+            self.log("No animals found to publish.")
 
         headers = { "Authorization": "Token token=%s" % token, "Accept": "*/*" }
 
@@ -107,7 +106,7 @@ class PetRescuePublisher(AbstractPublisher):
                     self.cleanup()
                     return
       
-                data = self.processAnimal(an, all_desexed, adoptable_in, suburb, state, postcode, contact_name, contact_number, contact_email)
+                data = self.processAnimal(an, all_desexed, adoptable_in, suburb, state, postcode, contact_name, contact_number, contact_email, all_microchips)
 
                 # PetRescue will insert/update accordingly based on whether remote_id/remote_source exists
                 url = PETRESCUE_URL + "listings"
@@ -116,9 +115,9 @@ class PetRescuePublisher(AbstractPublisher):
                 r = asm3.utils.post_json(url, jsondata, headers=headers)
 
                 if r["status"] != 200:
-                    self.logError("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], self.utf8_to_ascii(r["response"])))
+                    self.logError("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], r["response"]))
                 else:
-                    self.log("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], self.utf8_to_ascii(r["response"])))
+                    self.log("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], r["response"]))
                     self.logSuccess("Processed: %s: %s (%d of %d)" % ( an["SHELTERCODE"], an["ANIMALNAME"], anCount, len(animals)))
                     processed.append(an)
 
@@ -151,7 +150,7 @@ class PetRescuePublisher(AbstractPublisher):
             try:
                 status = "on_hold"
                 if an.ACTIVEMOVEMENTDATE is not None and an.ACTIVEMOVEMENTTYPE == 1: status = "rehomed"
-                if an.DECEASEDDATE is not None or (an.ACTIVEMOVEMENTDATE is not None and an.ACTIVEMOVEMENTTYPE != 2): status = "removed"
+                elif an.DECEASEDDATE is not None or (an.ACTIVEMOVEMENTDATE is not None and an.ACTIVEMOVEMENTTYPE != 2): status = "removed"
 
                 # We have the last status update in the LastStatus field (which is animalpublished.Extra for this animal)
                 # Don't send the same update again.
@@ -165,14 +164,14 @@ class PetRescuePublisher(AbstractPublisher):
                     r = asm3.utils.patch_json(url, jsondata, headers=headers)
 
                     if r["status"] == 200:
-                        self.log("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], self.utf8_to_ascii(r["response"])))
+                        self.log("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], r["response"]))
                         self.logSuccess("%s - %s: Marked with new status %s" % (an.SHELTERCODE, an.ANIMALNAME, status))
 
                         # Update animalpublished for this animal with the status we just sent in the Extra field
                         # so that it can be picked up next time.
                         self.markAnimalPublished(an.ID, extra = status)
                     else:
-                        self.logError("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], self.utf8_to_ascii(r["response"])))
+                        self.logError("HTTP %d, headers: %s, response: %s" % (r["status"], r["headers"], r["response"]))
 
             except Exception as err:
                 self.logError("Failed closing listing for %s - %s: %s" % (an.SHELTERCODE, an.ANIMALNAME, err), sys.exc_info())
@@ -182,7 +181,7 @@ class PetRescuePublisher(AbstractPublisher):
 
         self.cleanup()
 
-    def processAnimal(self, an, all_desexed=False, adoptable_in="", suburb="", state="", postcode="", contact_name="", contact_number="", contact_email=""):
+    def processAnimal(self, an, all_desexed=False, adoptable_in="", suburb="", state="", postcode="", contact_name="", contact_number="", contact_email="", all_microchips=False):
         """ Processes an animal record and returns a data dictionary to upload as JSON """
         isdog = an.SPECIESID == 1
         iscat = an.SPECIESID == 2
@@ -225,6 +224,10 @@ class PetRescuePublisher(AbstractPublisher):
         if "BREDINCAREOFGROUP" in an and an.BREDINCAREOFGROUP != "" and an.BREDINCAREOFGROUP != "0":
             bred_in_care_of_group = True
 
+        needs_foster = False
+        if "NEEDSFOSTER" in an and an.NEEDSFOSTER != "" and an.NEEDSFOSTER != "0":
+            needs_foster = True
+
         rehoming_organisation_id = ""
         if "REHOMINGORGANISATIONID" in an and an.REHOMINGORGANISATIONID != "":
             rehoming_organisation_id = an.REHOMINGORGANISATIONID
@@ -241,24 +244,25 @@ class PetRescuePublisher(AbstractPublisher):
         if not hwtreated: hwtreated = None
         if not wormed: wormed = None
 
-        # Use the fosterer's postcode, state and suburb if available
+        # Use the fosterer or retailer postcode, state and suburb if available
         location_postcode = postcode
         location_state_abbr = state
         location_suburb = suburb
-        if an.ACTIVEMOVEMENTID and an.ACTIVEMOVEMENTTYPE == 2:
+        if an.ACTIVEMOVEMENTID and an.ACTIVEMOVEMENTTYPE in (2, 8):
             fr = self.dbo.first_row(self.dbo.query("SELECT OwnerTown, OwnerCounty, OwnerPostcode FROM adoption m " \
                 "INNER JOIN owner o ON m.OwnerID = o.ID WHERE m.ID=?", [ an.ACTIVEMOVEMENTID ]))
             if fr is not None and fr.OWNERPOSTCODE: location_postcode = fr.OWNERPOSTCODE
             if fr is not None and fr.OWNERCOUNTY: location_state_abbr = fr.OWNERCOUNTY
             if fr is not None and fr.OWNERTOWN: location_suburb = fr.OWNERTOWN
 
-        # Only send microchip_number for animals listed in or located in Victoria or New South Wales
+        # Only send microchip_number if all_microchips is turned on, or for animals listed in or 
+        # located in Victoria or New South Wales.
         # Since people can enter any old rubbish in the state field, we use postcode to figure out
         # location - 2XXX = NSW, 3XXX = VIC
         microchip_number = ""
         adoptable_in_list = adoptable_in.split(",")
-        if "VIC" in adoptable_in_list or "NSW" in adoptable_in_list or \
-            location_postcode.startswith("2") or location_postcode.startswith("3"):
+        if all_microchips or ("VIC" in adoptable_in_list or "NSW" in adoptable_in_list or \
+            location_postcode.startswith("2") or location_postcode.startswith("3")):
             microchip_number = asm3.utils.iif(an.IDENTICHIPPED == 1, an.IDENTICHIPNUMBER, "")
 
         # Construct and return a dictionary of info for this animal
@@ -275,7 +279,7 @@ class PetRescuePublisher(AbstractPublisher):
             "rehoming_organisation_id": rehoming_organisation_id, # required for NSW, this OR microchip or breeder_id is mandatory
             "bred_in_care_of_group":    bred_in_care_of_group, 
             "mix":                      an.CROSSBREED == 1, # true | false
-            "date_of_birth":            asm3.i18n.format_date("%Y-%m-%d", an.DATEOFBIRTH), # iso
+            "date_of_birth":            asm3.i18n.format_date(an.DATEOFBIRTH, "%Y-%m-%d"), # iso
             "gender":                   an.SEXNAME.lower(), # male | female
             "personality":              self.getDescription(an, replaceSmart=True), # 20-4000 chars of free type
             "best_feature":             best_feature, # 25 chars free type, defaults to "Looking for love" requires BESTFEATURE additional field
@@ -284,7 +288,6 @@ class PetRescuePublisher(AbstractPublisher):
             "location_suburb":          location_suburb, # shelter/fosterer suburb
             "microchip_number":         microchip_number, 
             "desexed":                  an.NEUTERED == 1 or all_desexed, # true | false, validates to always true according to docs
-            "contact_method":           "email", # email | phone
             "size":                     asm3.utils.iif(isdog, size, ""), # dogs only - small | medium | high
             "senior":                   isdog and ageinyears > (7 * 365), # dogs only, true | false
             "vaccinated":               vaccinated, # cats, dogs, rabbits, true | false
@@ -300,15 +303,16 @@ class PetRescuePublisher(AbstractPublisher):
             "adoption_process":         "", # 4,000 chars how to adopt
             "contact_details_source":   "self", # self | user | group
             "contact_preferred_method": "email", # email | phone
+            "display_contact_preferred_method_only": contact_number == "",
             "contact_name":             contact_name, # name of contact details owner
             "contact_number":           contact_number, # number to enquire about adoption
             "contact_email":            contact_email, # email to enquire about adoption
-            "foster_needed":            False, # true | false
+            "foster_needed":            needs_foster, # true | false
             "adoptable_in_abbrs":       adoptable_in_list, # array of states for adoption in: ACT NSW NT QLD SA TAS VIC WA 
             "medical_notes":            "", # DISABLED an.HEALTHPROBLEMS, # 4,000 characters medical notes
             "multiple_animals":         an.BONDEDANIMALID > 0 or an.BONDEDANIMAL2ID > 0, # More than one animal included in listing true | false
             "photo_urls":               self.getPhotoUrls(an.ID), # List of photo URL strings
-            "status":                   "active" # active | removed | on_hold | rehomed | suspended | group_suspended
+            "status":                   "active" # active | removed | on_hold | rehomed 
         }
 
 

@@ -57,16 +57,22 @@ select:disabled, input:disabled, textarea:disabled {
     display: none;
 }
 
-.dialogshadow, .menushadow, .thumbnailshadow {
+.dialogshadow, .menushadow, .thumbnailshadow, .popupshadow {
     box-shadow: 3px 3px 5px #888;
 }
+
+
 
 .centered {
     text-align: center;
 }
 
+.leftalign {
+    text-align: start;
+}
+
 .rightalign {
-    text-align: right;
+    text-align: end;
 }
 
 .nowrap {
@@ -87,6 +93,10 @@ select:disabled, input:disabled, textarea:disabled {
     font-weight: bold;
 }
 
+.underline {
+    text-decoration: underline; 
+}
+
 /** LOGIN SCREEN ============= */
 #asm-login-window {
     padding: 0px;
@@ -98,13 +108,15 @@ select:disabled, input:disabled, textarea:disabled {
 }
 
 #asm-login-window a {
-    color: #000 !important;
+    color: #000;
 }
 
 #asm-login-splash {
     width: 100%;
     height: 200px;
     background-size: contain;
+    background-repeat: no-repeat;
+    background-position: 50%;
 }
 
 #asm-login-nav {
@@ -169,6 +181,10 @@ select:disabled, input:disabled, textarea:disabled {
 .asm-disabled-menu-item {
     color: #ccc;
     padding-left: 15px;
+}
+
+.asm-has-validation {
+    color: #f00;
 }
 
 .asm-hotkey {
@@ -247,15 +263,50 @@ select:disabled, input:disabled, textarea:disabled {
 .asm-main-table a { font-weight: bold; }
 .asm-main-table a:hover { text-decoration: underline !important; }
 
+.asm-main-about-version {
+    text-align: center;
+    font-weight: bold;
+    font-size: 120%;
+}
+
+.asm-main-about-version img {
+    border: 0;
+    vertical-align: middle;
+    height: 64px;
+}
+
+.asm-main-about-browser {
+    text-align: center;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #cc00ff;
+    background-color: #cb6bd6;
+    color: #fff;
+}
+
 /** FOOTER ========================= */
-.asm-footer-version {
-    margin-top: 16px;
+#footer {
+    width: 100%;
     font-size: 80%;
     border-top: 1px solid #aaa;
+}
+.asm-footer-users {
+    display: inline-block;
+    width: 50%;
+    text-align: left;
+}
+.asm-footer-version {
+    display: inline-block;
+    width: 50%;
     text-align: right;
 }
 
 /** ANIMAL/PERSON CHOOSERS ========= */
+.asm-animalchoosermulti-filter {
+    padding-top: 5px;
+    display: inline-block;
+    vertical-align: top;
+}
 .asm-animalchoosermulti-result {
     display: inline-block;
     text-align: center;
@@ -296,6 +347,15 @@ select:disabled, input:disabled, textarea:disabled {
     white-space: nowrap;
 }
 
+.asm-flag-banned, .asm-flag-deceased, .asm-flag-incident, .asm-flag-investigation {
+    color: red;
+}
+
+.asm-flag-dangerous {
+    color: red; 
+    font-weight: bold;
+}
+
 .asm-search-name {
     font-size: 150%;
     font-weight: bold;
@@ -321,6 +381,10 @@ select:disabled, input:disabled, textarea:disabled {
 .asm-search-nonshelter {
     color: #cb6bd6;
     font-weight: bold;
+}
+
+.asm-search-adoptable {
+    color: green;
 }
 
 .asm-search-notforadoption {
@@ -363,18 +427,30 @@ select:disabled, input:disabled, textarea:disabled {
     font-weight: bold; 
 }
 
+/** REPORTS ===================== */
+.asm-report-toolbar {
+    top: 0;
+    position: sticky;
+    padding: 5px;
+    background-color: #fff;
+    border-bottom: 1px solid black;
+    margin-bottom: 5px;
+    box-shadow: 0 4px 2px -2px #888;
+}
+
 /** ROTA ======================== */
-.asm-staff-rota th { background-color: #fff; color: #666; padding: 8px; font-weight: normal; }
+.asm-staff-rota th { top: 0; position: sticky; } 
+.asm-staff-rota-day { background-color: #fff; color: #666; padding: 8px; font-weight: normal; }
 .asm-staff-rota-today { background-color: #f5f5dc !important; color: #000 !important; }
 .asm-staff-rota { width: 100%; border-collapse: collapse; }
 .asm-staff-rota td { border: 1px solid #dbdbdb; text-align: center; padding: 5px; }
 .asm-staff-rota td:first-child { text-align: right !important; }
 .asm-staff-rota-cell { background-color: #fff; cursor: pointer; }
 .asm-staff-rota-cell:hover { background-color: #eee; }
-.asm-staff-rota-shift { width: 80%; color: #000 !important; padding: 4px; display: inline-block; border: 1px solid transparent; }
+.asm-staff-rota-shift { width: 80%; color: #000; padding: 4px; display: inline-block; border: 1px solid transparent; }
 .asm-staff-rota-shift-work { font-size: 80%; }
 .asm-staff-rota-shift:hover { border: 1px dotted #555 !important; }
-.asm-staff-rota-overtime { width: 80%; background-color: #ff9999; color: #000 !important; padding: 4px; display: inline-block; border: 1px solid transparent; }
+.asm-staff-rota-overtime { width: 80%; background-color: #ff9999; color: #000; padding: 4px; display: inline-block; border: 1px solid transparent; }
 .asm-staff-rota-overtime:hover { border: 1px dotted #555 !important; }
 .asm-staff-rota-timeoff { width: 80%; background-color: #ffffcc; color: #000 !important; padding: 4px; display: inline-block; border: 1px solid transparent; }
 .asm-staff-rota-timeoff:hover { border: 1px dotted #555 !important; }
@@ -389,6 +465,7 @@ select:disabled, input:disabled, textarea:disabled {
 
 /** SHELTERVIEW ================= */
 .asm-shelterview-animal {
+    vertical-align: top;
     display: inline-block;
     text-align: center;
     border: 1px dotted #ccc;
@@ -428,17 +505,19 @@ select:disabled, input:disabled, textarea:disabled {
 .asm-timeline-item { border-bottom: 1px dotted #555; padding: 10px; }
 
 /** TABLES ========================== */
-.asm-table { border-collapse: separate; }
+.asm-table { border-collapse: collapse; }
 .asm-table td { font-weight: normal !important; padding: .4em; border-top-width: 0px !important; }
 .asm-table th { text-align: center; padding: .8em .4em; }
 .asm-table td.first, .asm-table th.first { border-left-width: 0px !important; }
 .asm-table a { font-weight: bold; }
 .asm-table a:hover { text-decoration: underline !important; }
+.asm-table-sticky-header { top: 0; position: sticky; }
 .asm-completerow { opacity: 0.5; zoom: 1;}
-.asm-overduerow { font-style: italic !important; color: #ff0000 !important; }
+.asm-overduerow { font-style: italic; color: #ff0000; }
 .asm-warningrow { color: #ff0000; }
-#header-fixed { left: 16px; border-collapse: collapse; }
-#header-fixed th { padding: 8px; padding-right: 14px; }
+#tableform-select-all { position: absolute; margin-top: 8px; margin-left: 5px; z-index: 1; }
+#tableform-toggle-filter { position: absolute; margin-top: 8px; margin-left: 20px; z-index: 1; }
+#tableform-select-all:hover, #tableform-toggle-filter:hover { opacity: 0.7; }
 
 /** WAITING LIST ==================== */
 .asm-wl-highlight { color: #000; background-color: #fff284; }
@@ -469,29 +548,20 @@ select:disabled, input:disabled, textarea:disabled {
 .asm-lostfound-number { color: red; }
 
 /** MEDIA ============================= */
-.asm-mediaicons { 
-    display: block;
-    width: 100%; 
-    padding: 5px;
-    text-align: center;
-}
-.asm-mediaicon {
+.asm-media-thumb { 
     display: inline-block;
-    min-width: 100px; 
-    max-width: 200px;
-    width: auto;
-    text-align: center; 
     vertical-align: middle; 
-    border: 1px solid #aaa; 
-    padding: 5px 
+}
+.asm-media-mods {
+    display: inline-block;
+    vertical-align: middle;
 }
 .asm-mediadroptarget {
     display: inline-block;
     min-width: 100px;
-    min-height: 100px;
     text-align: center;
     vertical-align: middle;
-    padding: 20px;
+    padding: 3px;
     color: #ccc;
     border: 4px dashed #ccc;
 }
@@ -503,6 +573,15 @@ select:disabled, input:disabled, textarea:disabled {
 /** PERSON ============================ */
 .asm-person-code { color: red; }
 .personchooser-noperm { font-weight: bold; }
+
+/** REPORTS =========================== */
+.asm-report-revision {
+    color: #366575;
+    background-color: #fffaed;
+    border: 1px solid #333;
+    padding: 3px;
+    margin: 1px;
+}
 
 /** ACCOUNTS ========================== */
 #table-trx { border-collapse: collapse; }
@@ -525,7 +604,7 @@ select:disabled, input:disabled, textarea:disabled {
     display: inline-block;
     white-space: nowrap;
 	border-radius: 3px;
-    box-shadow: 0 1px 3px #DDD;
+    box-shadow: 0 1px 3px #ddd;
     border: 1px solid #555;
     padding: 5px;
     margin: 1px;
@@ -544,7 +623,7 @@ select:disabled, input:disabled, textarea:disabled {
     display: inline-block;
     white-space: nowrap;
 	border-radius: 3px;
-    box-shadow: 0 1px 3px #DDD;
+    box-shadow: 0 1px 3px #ddd;
     border: 1px solid #555;
     padding: 5px;
     margin: 1px;
@@ -603,7 +682,7 @@ select:disabled, input:disabled, textarea:disabled {
 }
 
 .asm-error-text {
-    color: red !important;
+    color: red;
 }
 
 .asm-header {
@@ -629,13 +708,15 @@ select:disabled, input:disabled, textarea:disabled {
     color: #000;
     overflow: scroll;
 }
+/** in richtextarea, the tinymce toolbar is used, stop dialogs floating over it */
+.tox-tinymce-inline { z-index: 101; }
 
 .asm-htmleditor, .asm-sqleditor {
     display: none;
 }
 
 .controlshadow {
-    box-shadow: 0 1px 2px #DDD;
+    box-shadow: 0 1px 2px #ddd;
 }
 
 .borderradius .controlborder {
@@ -681,13 +762,6 @@ select:disabled, input:disabled, textarea:disabled {
     width: 197px;
 }
 
-.asm-halfselectbox {
-    width: 95px;
-    background-color: #fff;
-    color: #000;
-    border: 1px solid #555;
-}
-
 .asmSelect {
     width: 197px;
     background-color: #ddd;
@@ -698,6 +772,13 @@ select:disabled, input:disabled, textarea:disabled {
 
 .asm-selectbox {
     width: 197px;
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #555;
+}
+
+.asm-halfselectbox {
+    width: 95px;
     background-color: #fff;
     color: #000;
     border: 1px solid #555;
@@ -727,6 +808,10 @@ select:disabled, input:disabled, textarea:disabled {
     cursor: pointer;
 }
 
+.asm-table-fullwidth {
+    width: 100%;
+}
+
 .asm-table-layout {
     border-spacing: 5px 1px;
 }
@@ -743,15 +828,26 @@ select:disabled, input:disabled, textarea:disabled {
     max-height: 85px;
     background-color: #fff;
     border-radius: 2px;
-    box-shadow: 3px 3px 5px #888;
 }
 
-.asm-thumbnail-male {
-    background-color: #ffb3ff;
+.objectfit .asm-thumbnail {
+    vertical-align: middle;
+    border: 1px solid #555;
+    padding: 5px;
+    margin: 5px;
+    width: 85px;
+    height: 85px;
+    object-fit: contain;
+    background-color: #fff;
+    border-radius: 2px;
 }
 
-.asm-thumbnail-female {
+.objectfit .asm-thumbnail-male, .asm-thumbnail-male {
     background-color: #99c2ff;
+}
+
+.objectfit .asm-thumbnail-female, .asm-thumbnail-female {
+    background-color: #ffb3ff;
 }
 
 .asm-textbox, .asm-selectbox {
@@ -773,6 +869,7 @@ select:disabled, input:disabled, textarea:disabled {
 
 .asm-redbutton {
     background: red !important;
+    font-weight: bold !important;
     border: 1px solid red !important;
     color: #fff !important;
 }
@@ -814,6 +911,16 @@ select:disabled, input:disabled, textarea:disabled {
 
 .asm-link-disabled:hover {
     text-decoration: none;
+}
+
+
+/** Tweaks for when displaying on portrait mobile devices */
+@media screen and (max-device-width:480px) {
+
+    /** Stack table cells containing nested tables on mobile so
+     *  that they don't overflow and require horizontal scrolling */
+    .asm-nested-table-td { display: block; }
+
 }
 
 /** Hide elements from printing by giving them the no-print class */

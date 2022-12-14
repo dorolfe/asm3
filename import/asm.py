@@ -52,6 +52,19 @@ Also has some useful helper functions for reading CSVs and parsing values, eg:
 import csv, datetime, re, time
 import os, sys, base64, requests
 
+try:
+    import dbfread
+    """ when faced with a field type it doesn't understand, dbfread can produce an error
+        'Unknown field type xx'. This parser returns anything unrecognised as binary data """
+    class ExtraFieldParser(dbfread.FieldParser):
+        def parse(self, field, data):
+            try:
+                return dbfread.FieldParser.parse(self, field, data)
+            except ValueError:
+                return data
+except:
+    pass
+
 if sys.version_info[0] > 2: # PYTHON3
     import urllib.request as urllib2
     from io import StringIO
@@ -65,6 +78,9 @@ nextyearcode = 1
 # Dictionary of tables and next ID
 ids = {}
 
+# Dictionary of jurisdictions
+jurisdictions = {}
+
 # Dictionary of locations
 locations = {}
 
@@ -74,62 +90,11 @@ pickuplocations = {}
 # Dictionary of custom colours if we're going to supply a new set
 customcolours = {}
 
-# Dictionary of entry reasons
-entryreasons = {
-    "Marriage/Relationship split": 1,
-    "Allergies": 2,
-    "Biting": 3,
-    "Unable to Cope": 4,
-    "Unsuitable Accommodation": 5,
-    "Died": 6,
-    "Stray": 7,
-    "Sick/Injured": 8,
-    "Unable to Afford": 9,
-    "Abuse": 10,
-    "Abandoned": 11,
-    "Boarding": 12,
-    "Born in Shelter": 13,
-    "TNR - Trap/Neuter/Release": 14,
-    "Transfer from Other Shelter": 15,
-    "Transfer from Municipal Shelter": 16,
-    "Surrender": 17,
-    "Too Many Animals": 18
-}
+# media files written
+mediafilescount = 0
+mediafilesbytes = 0
 
-# Dictionary of donation types
-donationtypes = {
-#    "Donation": 1,
-#    "Adoption Fee": 2,
-#    "Waiting List Donation": 3,
-#    "Entry Donation": 4,
-#    "Animal Sponsorship": 5,
-#    "In-Kind Donation": 6
-}
-
-# Dictionary of test types
-testtypes = {
-#    "FIV": 1,
-#    "FLV": 2,
-#    "Heartworm": 3
-}
-
-# Dictionary of vaccination types
-vaccinationtypes = {
-#    "Distemper": 1,
-#    "Hepatitis": 2,
-#    "Leptospirosis": 3,
-#    "Rabies": 4,
-#    "Parainfluenza": 5,
-#    "Bordetella": 6, 
-#    "Parvovirus": 7,
-#    "DHLPP": 8,
-#    "FVRCP": 9,
-#    "Chlamydophila": 10,
-#    "FIV": 11,
-#    "FeLV": 12,
-#    "FIPV": 13,
-#    "FECV/FeCoV": 14
-}
+# See end of file for dictionaries of lookups that require classes
 
 def atoi(s):
     """ Returns an integer based on only the numeric
@@ -139,7 +104,15 @@ def atoi(s):
     except:
         return 0
 
-def csv_to_list(fname, strip = False, remove_control = False, remove_non_ascii = False, uppercasekeys = False, unicodehtml = False):
+def atof(s):
+    """ Returns a float based on only the numeric
+        portion of a string like the C lib atoi function """
+    try:
+        return float("".join(re.findall(r'[\d-]',s)))
+    except:
+        return 0
+
+def csv_to_list(fname, strip = False, remove_bom = True, remove_control = False, remove_non_ascii = False, uppercasekeys = False, unicodehtml = False, encoding="utf-8"):
     """
     Reads the csv file fname and returns it as a list of maps 
     with the first row used as the keys.
@@ -156,26 +129,25 @@ def csv_to_list(fname, strip = False, remove_control = False, remove_non_ascii =
     # Read the file into memory buffer b first
     # any raw transformations can be done on it there
     b = StringIO()
-    with open(fname, "rb") as f:
+    with open(fname, "r", encoding=encoding) as f:
         for s in f.readlines():
+            if remove_bom:
+                s = s.replace("\ufeff", "")
             if remove_control:
-                b.write(''.join(c for c in s if ord(c) >= 32))
-                b.write("\n")
+                s = ''.join(c for c in s if ord(c) >= 32) + "\n"
             if remove_non_ascii:
-                b.write(''.join(c for c in s if ord(c) >= 32 and ord(c) <= 127))
-                b.write("\n")
-            elif unicodehtml:
-                b.write(s.decode("utf8").encode("ascii", "xmlcharrefreplace"))
-            else:
-                b.write(s)
+                s = ''.join(c for c in s if ord(c) >= 32 and ord(c) <= 127) + "\n"
+            if unicodehtml:
+                s = s.encode("ascii", "xmlcharrefreplace").decode("ascii")
+            b.write(s)
         f.close()
     reader = csv.DictReader(StringIO(b.getvalue()))
     for row in reader:
         if strip:
-            for k, v in row.iteritems():
+            for k, v in row.items():
                 row[k] = v.strip()
         if uppercasekeys:
-            row = {k.upper(): v for k, v in row.iteritems()}
+            row = {k.upper(): v for k, v in row.items()}
         o.append(row)
     return o
 
@@ -215,6 +187,9 @@ def csv_to_list_cols(fname, cols, strip = False, remove_control = False, upperca
         o.append(row)
     return o
 
+def read_dbf(name, encoding="cp1252"):
+    return dbfread.DBF(name, encoding=encoding, parserclass=ExtraFieldParser)
+
 def cint(s):
     try:
         return int(s)
@@ -234,6 +209,8 @@ def good_with(s):
     return 0
 
 def get_currency(s):
+    if s is None: return 0
+    if type(s) == int or type(s) == float: return int(s * 100)
     if s.strip() == "": return 0
     s = s.replace("$", "")
     s = s.replace("&nbsp;", "")
@@ -248,6 +225,9 @@ def nulltostr(s):
     else:
         return s
 
+def file_exists(f):
+    return os.path.exists(f)
+
 def fw(s):
     """ returns the first word """
     if s is None: return s
@@ -261,6 +241,7 @@ def remove_time(s):
     return s.split(" ")[0]
 
 def remove_seconds(s):
+    if s is None: return s
     if s.find(" ") == -1:
         return s
     b = s.split(" ", 1)
@@ -357,28 +338,44 @@ def getsex_mf(s):
 def now():
     return datetime.datetime.today()
 
+def today():
+    """ Returns today as a Python date """
+    return datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+
 def stderr(s):
     sys.stderr.write("%s\n" % s)
 
-def stderr_summary(animals=[], animalmedicals=[], animalvaccinations=[], animaltests=[], owners=[], ownerlicences=[], ownerdonations=[], animalcontrol=[], movements=[], logs=[]):
+def stderr_summary(animals=[], animalmedicals=[], animalvaccinations=[], animaltests=[], owners=[], ownerlicences=[], ownerdonations=[], animalcontrol=[], movements=[], logs=[], stocklevels=[], waitinglists=[]):
     def o(l, d):
         if len(l) > 0:
             stderr("%d %s" % (len(l), d))
     if len(animals) != 0:
         onshelter = 0
         offshelter = 0
+        nonshelter = 0
         dead = 0
         euth = 0
+        dupcodes = 0
+        codes = set()
+        dups = []
         for a in animals:
+            if a.ShelterCode in codes: 
+                dupcodes += 1
+                dups.append(a.ShelterCode)
+            codes.add(a.ShelterCode)
             if a.Archived == 0:
                 onshelter += 1
+            elif a.Archived == 1 and a.NonShelterAnimal == 1:
+                nonshelter += 1
             elif a.Archived == 1 and a.DeceasedDate is None:
                 offshelter += 1
             elif a.DeceasedDate is not None and a.PutToSleep == 0:
                 dead += 1
             elif a.DeceasedDate is not None and a.PutToSleep == 1:
                 euth += 1
-        stderr("%d animals (%d on-shelter, %d off-shelter, %d dead, %d euthanised)" % (len(animals), onshelter, offshelter, dead, euth))
+        stderr("%d animals (%d on-shelter, %d off-shelter, %d non-shelter, %d dead, %d euthanised)" % (len(animals), onshelter, offshelter, nonshelter, dead, euth))
+        if dupcodes > 0:
+            stderr("WARNING: %d duplicate shelter codes (%s .. %s)" % (dupcodes, dups[0], dups[-1]))
     o(animalmedicals, "medicals")
     o(animalvaccinations, "vaccinations")
     o(animaltests, "tests")
@@ -388,10 +385,10 @@ def stderr_summary(animals=[], animalmedicals=[], animalvaccinations=[], animalt
     o(ownerlicences, "licences")
     o(ownerdonations, "payments")
     o(animalcontrol, "incidents")
-
-def today():
-    """ Returns today as a Python date """
-    return datetime.datetime.today()
+    o(stocklevels, "stock levels")
+    o(waitinglists, "waiting list entries")
+    if mediafilescount > 0:
+        stderr("%d media files (%d bytes)" % (mediafilescount, mediafilesbytes))
 
 # List of default colours
 colours = (
@@ -486,7 +483,9 @@ def colour_name_for_id(id, default = "Black"):
 # List of default species
 species = (
 ("1","Dog"),
+("1","Canine"),
 ("2","Cat"),
+("2","Feline"),
 ("3","Bird"),
 ("4","Mouse"),
 ("5","Rat"),
@@ -509,6 +508,7 @@ species = (
 ("22","Hamster"),
 ("23","Camel"),
 ("24","Horse"),
+("24","Equine"),
 ("25","Pony"),
 ("26","Donkey"),
 ("27","Llama"),
@@ -649,6 +649,7 @@ breeds = (
 ("90","French Bulldog"),
 ("91","German Pinscher"),
 ("92","German Shepherd Dog"),
+("92","GSD"),
 ("93","German Shorthaired Pointer"),
 ("94","German Wirehaired Pointer"),
 ("95","Glen of Imaal Terrier"),
@@ -714,6 +715,8 @@ breeds = (
 ("155","Petit Basset Griffon Vendeen"),
 ("156","Pharaoh Hound"),
 ("157","Pit Bull Terrier"),
+("157","Pitbull Terrier"),
+("157","Pitbull"),
 ("158","Plott Hound"),
 ("159","Portugese Podengo"),
 ("160","Pointer"),
@@ -1025,6 +1028,15 @@ def incidenttype_from_db(name, default = 1):
     """ Looks up the type in the db when the conversion is run, assign to IncidentTypeID """
     return "COALESCE((SELECT ID FROM incidenttype WHERE lower(IncidentName) LIKE lower(%s) LIMIT 1), %d)" % (ds(name.strip()), default)
 
+def jurisdiction_id_for_name(name, createIfNotExist = True):
+    global jurisdictions
+    if name.strip() == "": return 1
+    if name in jurisdictions:
+        return jurisdictions[name].ID
+    else:
+        jurisdictions[name] = Jurisdiction(Name=name)
+        return jurisdictions[name].ID
+
 def jurisdiction_from_db(name, default = 1):
     """ Looks up the jurisdiction in the db when the conversion is run, assign to JurisdictionID """
     return "COALESCE((SELECT ID FROM jurisdiction WHERE lower(JurisdictionName) LIKE lower('%s') LIMIT 1), %d)" % (name.strip(), default)
@@ -1040,7 +1052,7 @@ def location_id_for_name(name, createIfNotExist = True):
 
 def location_from_db(name, default = 2):
     """ Looks up the internallocation in the db when the conversion is run, assign to ShelterLocation """
-    return "COALESCE((SELECT ID FROM internallocation WHERE lower(LocationName) LIKE lower('%s') LIMIT 1), %d)" % (name.strip(), default)
+    return "COALESCE((SELECT ID FROM internallocation WHERE lower(LocationName) LIKE lower('%s') LIMIT 1), %d)" % (name.strip().replace("'", "`"), default)
 
 def pickuplocation_id_for_name(name, createIfNotExist = True):
     global pickuplocations
@@ -1073,9 +1085,13 @@ def entryreason_id_for_name(name, createIfNotExist = True):
         entryreasons[name] = EntryReason(Name=name)
         return entryreasons[name].ID
 
+def animaltype_from_db(name, default = 2):
+    """ Looks up the animaltype in the db when the conversion is run, assign to AnimalTypeID """
+    return "COALESCE((SELECT ID FROM animaltype WHERE lower(AnimalType) LIKE lower('%s') LIMIT 1), %d)" % (name.strip().replace("'", "`"), default)
+
 def entryreason_from_db(name, default = 2):
     """ Looks up the entryreason in the db when the conversion is run, assign to EntryReasonID """
-    return "COALESCE((SELECT ID FROM entryreason WHERE lower(ReasonName) LIKE lower('%s') LIMIT 1), %d)" % (name.strip(), default)
+    return "COALESCE((SELECT ID FROM entryreason WHERE lower(ReasonName) LIKE lower('%s') LIMIT 1), %d)" % (name.strip().replace("'", "`"), default)
 
 def size_from_db(name, default = 1):
     """ Looks up the size in the db when the conversion is run, assign to animal.Size """
@@ -1145,6 +1161,12 @@ def type_id_for_name(name):
             return int(tid)
     return 2
 
+def type_id_for_species_id(sid):
+    if sid is None: return 2
+    if sid == 1: return 2
+    elif sid == 2: return 11
+    else: return 13
+
 def type_name_for_id(id):
     for tid, tname in types:
         if int(tid) == id:
@@ -1159,7 +1181,10 @@ def strip(s):
     """
     Remove any unicode or control characters and whitespace
     """
-    if type(s) != str and type(s) != unicode: return s
+    if sys.version_info[0] > 2: 
+        if type(s) != str: return s # PYTHON3
+    else:
+        if type(s) != str and type(s) != unicode: return s # PYTHON2
     return ("".join(i for i in s if ord(i) >= 32 and ord(i)<128)).strip()
 
 def strip_unicode(s):
@@ -1170,7 +1195,7 @@ def strip_unicode(s):
 
 def dd(d):
     if d == None: return "NULL"
-    return "'%d-%02d-%02d'" % ( d.year, d.month, d.day )
+    return "'%d-%02d-%02d 00:00:00'" % ( d.year, d.month, d.day )
 
 def ddt(d):
     if d == None: return "NULL"
@@ -1341,6 +1366,12 @@ def date_diff(date1, date2):
         months = int((months / 52.0) * 12)
         return "%d years %d months." % (years, months)
 
+def todatetime(d):
+    """ If d is a datetime.date returns it as a datetime.datetime """
+    if d is None: return None
+    if type(d) == datetime.date: d = datetime.datetime.combine(d, datetime.time())
+    return d
+
 def add_days(d, dy):
     if d is None: return d
     return d + datetime.timedelta(days=dy)
@@ -1403,20 +1434,69 @@ def adopt_older_than(animals, movements, ownerid=100, days=365):
 			movements.append(m)
 	return movements
 
+def mime_type(filename):
+    """
+    Returns the mime type for a file with the given name
+    """
+    types = {
+        "jpg"   : "image/jpeg",
+        "jpeg"  : "image/jpeg",
+        "bmp"   : "image/bmp",
+        "gif"   : "image/gif",
+        "png"   : "image/png",
+        "doc"   : "application/msword",
+        "xls"   : "application/vnd.ms-excel",
+        "ppt"   : "application/vnd.ms-powerpoint",
+        "docx"  : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pptx"  : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "xslx"  : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "odt"   : "application/vnd.oasis.opendocument.text",
+        "sxw"   : "application/vnd.oasis.opendocument.text",
+        "ods"   : "application/vnd.oasis.opendocument.spreadsheet",
+        "odp"   : "application/vnd.oasis.opendocument.presentation",
+        "pdf"   : "application/pdf",
+        "mpg"   : "video/mpg",
+        "mp3"   : "audio/mpeg3",
+        "avi"   : "video/avi",
+        "htm"   : "text/html",
+        "html"  : "text/html"
+    }
+    ext = filename[filename.rfind(".")+1:].lower()
+    if ext in types:
+        return types[ext]
+    return "application/octet-stream"
+
 def animal_image(animalid, imagedata):
     """ Writes the media and dbfs entries to add an image to an animal """
-    if imagedata is None: return
+    media_file(0, animalid, "x.jpg", imagedata)
+
+def media_file(linktypeid, linkid, filename, filedata, medianotes = ""):
+    """ Writes the media and dbfs entries to add a piece of media to an animal or person """
+    if filedata is None: return
     mediaid = getid("media")
-    medianame = str(mediaid) + '.jpg'
-    encoded = base64.b64encode(imagedata)
-    print("UPDATE media SET websitephoto = 0, docphoto = 0 WHERE linkid = %d AND linktypeid = 0;" % animalid)
-    print("INSERT INTO media (id, medianame, medianotes, mediasize, mediamimetype, websitephoto, docphoto, newsincelastpublish, updatedsincelastpublish, " \
-        "excludefrompublish, linkid, linktypeid, recordversion, date) VALUES (%d, '%s', %s, %s, 'image/jpeg', 1, 1, 0, 0, 0, %d, 0, 0, %s);" % \
-        ( mediaid, medianame, ds(""), len(imagedata), animalid, dd(datetime.datetime.today()) ))
-    print("INSERT INTO dbfs (id, name, path, content) VALUES (%d, '%s', '%s', '');" % ( getid("dbfs"), str(animalid), '/animal' ))
+    if filename.rfind(".") == -1: return
+    extension = filename[filename.rfind("."):].lower()
+    medianame = str(mediaid) + extension
+    mimetype = mime_type(filename)
+    encoded = base64.b64encode(filedata)
+    if medianotes == "": medianotes = filename
+    medianotes = medianotes.replace("'", "''")
+    filename = filename.replace("'", "''")
+    if sys.version_info[0] > 2: encoded = encoded.decode("ascii") # PYTHON3 - turn base64 into str for stdout
+    websitephoto = extension == ".jpg" and 1 or 0
+    dbfsidpath = "/animal"
+    if linktypeid > 0: dbfsidpath = "/owner"
+    print(f"UPDATE media SET websitephoto = 0, docphoto = 0 WHERE linkid = {linkid} AND linktypeid = {linktypeid};")
+    print(f"INSERT INTO media (id, medianame, medianotes, mediasize, mediamimetype, websitephoto, docphoto, newsincelastpublish, updatedsincelastpublish, " \
+        f"excludefrompublish, linkid, linktypeid, recordversion, date) VALUES ({mediaid}, '{medianame}', '{medianotes}', {len(filedata)}, '{mimetype}', {websitephoto}, {websitephoto}, 0, 0, 0, " \
+        f"{linkid}, {linktypeid}, 0, {dd(datetime.datetime.today())});")
     dbfsid = getid("dbfs")
-    print("INSERT INTO dbfs (id, name, path, url, content) VALUES (%d, '%s', '%s', 'base64:', '%s');" % (dbfsid, medianame, "/animal/" + str(animalid), encoded))
-    print("UPDATE media SET DBFSID = %d WHERE ID = %d;" % (dbfsid, mediaid))
+    print(f"INSERT INTO dbfs (id, name, path, url, content) VALUES ({dbfsid}, '{medianame}', '{dbfsidpath + '/' + str(linkid)}', 'base64:', '{encoded}');")
+    print(f"UPDATE media SET DBFSID = {dbfsid} WHERE ID = {mediaid};")
+    global mediafilescount
+    global mediafilesbytes
+    mediafilescount += 1
+    mediafilesbytes += len(filedata)
 
 def animal_test(animalid, required, given, typename, resultname, comments = ""):
     """ Returns an animaltest object """
@@ -1432,17 +1512,20 @@ def animal_test(animalid, required, given, typename, resultname, comments = ""):
     av.Comments = comments
     return av
 
-def animal_vaccination(animalid, required, given, typename, comments = ""):
+def animal_vaccination(animalid, required, given, typename, comments = "", batchnumber = "", manufacturer = "", rabiestag = ""):
     """ Returns an animalvaccination object """
     av = AnimalVaccination()
     av.AnimalID = animalid
     av.DateRequired = required
     av.DateOfVaccination = given
     av.VaccinationID = vaccinationtype_id_for_name(typename, True)
+    av.BatchNumber = batchnumber
+    av.Manufacturer = manufacturer
+    av.RabiesTag = rabiestag
     av.Comments = comments
     return av
 
-def animal_regimen_single(animalid, dategiven, treatmentname, dosage = "", comments = ""):
+def animal_regimen_single(animalid, dategiven, treatmentname, dosage = "", comments = "", cost = 0):
     """ Writes a regimen and treatment record for a single given treatment """
     regimenid = getid("animalmedical")
     treatmentid = getid("animalmedicaltreatment")
@@ -1454,7 +1537,7 @@ def animal_regimen_single(animalid, dategiven, treatmentname, dosage = "", comme
         ( "Dosage", ds(dosage)),
         ( "StartDate", dd(dategiven)),
         ( "Status", di(2)), # Completed
-        ( "Cost", di(0)),
+        ( "Cost", di(cost)),
         ( "CostPaidDate", dd(None)),
         ( "TimingRule", di(0)),
         ( "TimingRuleFrequency", di(0)),
@@ -1490,11 +1573,23 @@ def animal_regimen_single(animalid, dategiven, treatmentname, dosage = "", comme
     amt = makesql("animalmedicaltreatment", s)
     return "%s\n%s\n" % (am, amt)
 
-def load_image_from_file(filename):
+def load_image_from_file(fpath, case_sensitive = True):
     """ Reads image data from a disk file or returns None if the file does not exist """
-    if not os.path.exists(filename): return None
+    if case_sensitive and not os.path.exists(fpath): return None
+    if not case_sensitive:
+        # Search the directory for the filename and compare case insensitive, then
+        # update fpath if we find the file
+        filename = fpath[fpath.rfind("/") + 1:]
+        foldername = fpath[0:fpath.rfind("/")]
+        result = False
+        for x in os.listdir(foldername):
+            if x.lower() == filename.lower():
+                fpath = foldername + "/" + x
+                result = True
+                break
+        if not result: return None
     try:
-        f = open(filename, "rb")
+        f = open(fpath, "rb")
         s = f.read()
         f.close()
         return s
@@ -1502,14 +1597,17 @@ def load_image_from_file(filename):
         return None
 
 def load_image_from_url(imageurl):
+    return load_file_from_url(imageurl)
+
+def load_file_from_url(url):
     try:
-        sys.stderr.write("GET %s\n" % imageurl)
-        jpgdata = urllib2.urlopen(imageurl).read()
-        sys.stderr.write("200 OK %s\n" % imageurl)
+        sys.stderr.write("GET %s\n" % url)
+        filedata = urllib2.urlopen(url).read()
+        sys.stderr.write("200 OK %s\n" % url)
     except Exception as err:
         sys.stderr.write(str(err) + "\n")
         return None
-    return jpgdata
+    return filedata
 
 def petfinder_get_adoptable(shelterid):
     """
@@ -1680,6 +1778,23 @@ class EntryReason:
             )
         return makesql("entryreason", s)
 
+class Jurisdiction:
+    ID = 0
+    Name = ""
+    Description = None
+    def __init__(self, ID = 0, Name = "", Description = ""):
+        self.ID = ID
+        if ID == 0: self.ID = getid("jurisdiction")
+        self.Name = Name
+        self.Description = Description
+    def __str__(self):
+        s = (
+            ( "ID", di(self.ID) ),
+            ( "JurisdictionName", ds(self.Name) ),
+            ( "JurisdictionDescription", ds(self.Description) )
+            )
+        return makesql("jurisdiction", s)
+
 class Location:
     ID = 0
     Name = ""
@@ -1790,6 +1905,7 @@ class AnimalControl:
     DispatchLatLong = ""
     DispatchedACO = ""
     DispatchDateTime = None
+    JurisdictionID = 0
     PickupLocationID = 0
     RespondedDateTime = None
     FollowupDateTime = None
@@ -1832,6 +1948,7 @@ class AnimalControl:
             ( "DispatchPostcode", ds(self.DispatchPostcode) ),
             ( "DispatchLatLong", ds(self.DispatchLatLong) ),
             ( "DispatchedACO", ds(self.DispatchedACO) ),
+            ( "JurisdictionID", di(self.JurisdictionID) ),
             ( "PickupLocationID", di(self.PickupLocationID) ),
             ( "DispatchDateTime", ddt(self.DispatchDateTime) ),
             ( "RespondedDateTime", ddt(self.RespondedDateTime) ),
@@ -1903,6 +2020,7 @@ class AnimalVaccination:
     DateExpires = None
     Manufacturer = ""
     BatchNumber = ""
+    RabiesTag = ""
     Comments = ""
     Cost = 0
     RecordVersion = 0
@@ -1924,6 +2042,7 @@ class AnimalVaccination:
             ( "Comments", ds(self.Comments) ),
             ( "Manufacturer", ds(self.Manufacturer) ),
             ( "BatchNumber", ds(self.BatchNumber) ),
+            ( "RabiesTag", ds(self.BatchNumber) ),
             ( "Cost", di(self.Cost) ),
             ( "RecordVersion", di(self.RecordVersion) ),
             ( "CreatedBy", ds(self.CreatedBy) ),
@@ -1932,6 +2051,57 @@ class AnimalVaccination:
             ( "LastChangedDate", dd(self.LastChangedDate) )
             )
         return makesql("animalvaccination", s)
+
+class AnimalWaitingList:
+    ID = 0
+    SpeciesID = 1
+    Size = 1
+    DatePutOnList = None
+    OwnerID = 0
+    AnimalDescription = ""
+    ReasonForWantingToPart = ""
+    CanAffordDonation = 0
+    Urgency = 5
+    DateRemovedFromList = None
+    AutoRemovePolicy = 1
+    DateOfLastOwnerContact = None
+    ReasonForRemoval = ""
+    Comments = ""
+    UrgencyUpdateDate = None
+    UrgencyLastUpdatedDate = None
+    RecordVersion = 0
+    CreatedBy = "conversion"
+    CreatedDate = today()
+    LastChangedBy = "conversion"
+    LastChangedDate = today()
+    def __init__(self, ID = 0):
+        self.ID = ID
+        if ID == 0: self.ID = getid("animalwaitinglist")
+    def __str__(self):
+        s = (
+            ( "ID", di(self.ID) ),
+            ( "SpeciesID", di(self.SpeciesID) ),
+            ( "Size", di(self.Size) ),
+            ( "DatePutOnList", dd(self.DatePutOnList) ),
+            ( "OwnerID", di(self.OwnerID) ),
+            ( "AnimalDescription", ds(self.AnimalDescription) ),
+            ( "ReasonForWantingToPart", ds(self.ReasonForWantingToPart) ),
+            ( "CanAffordDonation", di(self.CanAffordDonation) ),
+            ( "Urgency", di(self.Urgency) ),
+            ( "DateRemovedFromList", dd(self.DateRemovedFromList) ),
+            ( "AutoRemovePolicy", di(self.AutoRemovePolicy) ),
+            ( "DateOfLastOwnerContact", dd(self.DateOfLastOwnerContact) ),
+            ( "ReasonForRemoval", ds(self.ReasonForRemoval) ),
+            ( "Comments", ds(self.Comments) ),
+            ( "UrgencyUpdateDate", dd(self.UrgencyUpdateDate) ),
+            ( "UrgencyLastUpdatedDate", dd(self.UrgencyLastUpdatedDate) ),
+            ( "RecordVersion", di(self.RecordVersion) ),
+            ( "CreatedBy", ds(self.CreatedBy) ),
+            ( "CreatedDate", dd(self.CreatedDate) ),
+            ( "LastChangedBy", ds(self.LastChangedBy) ),
+            ( "LastChangedDate", dd(self.LastChangedDate) )
+            )
+        return makesql("animalwaitinglist", s)
 
 class Animal:
     ID = 0
@@ -1986,6 +2156,7 @@ class Animal:
     AnimalComments = ""
     OwnersVetID = 0
     CurrentVetID = 0
+    OwnerID = 0
     OriginalOwnerID = 0
     BroughtInByOwnerID = 0
     AdoptionCoordinatorID = 0
@@ -2000,6 +2171,7 @@ class Animal:
     IsDOA = 0
     IsTransfer = 0
     IsPickup = 0
+    JurisdictionID = 0
     PickupLocationID = 0
     PickupAddress = ""
     IsGoodWithCats = 2
@@ -2052,7 +2224,7 @@ class Animal:
         if typename == "": typename = type_name_for_id(self.AnimalTypeID)
         self.YearCodeID = nextyearcode
         self.ShelterCode = "%s%d%03d" % ( typename[0:1], self.DateBroughtIn.year, nextyearcode)
-        self.ShortCode = "%03d%s" % (nextyearcode, typename[0:1])
+        if self.ShortCode == "": self.ShortCode = "%03d%s" % (nextyearcode, typename[0:1]) # check so it can be assigned before generating code
         nextyearcode += 1
     def __str__(self):
         if self.AnimalAge == "" and self.DateOfBirth is not None:
@@ -2067,6 +2239,8 @@ class Animal:
                 self.DaysOnShelter = date_diff_days(self.DateBroughtIn, self.ActiveMovementDate)
         if self.MostRecentEntryDate is None:
             self.MostRecentEntryDate = self.DateBroughtIn
+        if self.IdentichipNumber is None:
+            self.IdentichipNumber = ""
         s = (
             ( "ID", di(self.ID) ),
             ( "AnimalTypeID", di(self.AnimalTypeID) ),
@@ -2121,6 +2295,7 @@ class Animal:
             ( "AnimalComments", ds(self.AnimalComments) ),
             ( "OwnersVetID", di(self.OwnersVetID) ),
             ( "CurrentVetID", di(self.CurrentVetID) ),
+            ( "OwnerID", di(self.OwnerID) ),
             ( "OriginalOwnerID", di(self.OriginalOwnerID) ),
             ( "BroughtInByOwnerID", di(self.BroughtInByOwnerID) ),
             ( "AdoptionCoordinatorID", di(self.AdoptionCoordinatorID) ),
@@ -2138,6 +2313,7 @@ class Animal:
             ( "IsDOA", di(self.IsDOA) ),
             ( "IsTransfer", di(self.IsTransfer) ),
             ( "IsPickup", di(self.IsPickup) ),
+            ( "JurisdictionID", di(self.JurisdictionID) ),
             ( "PickupLocationID", di(self.PickupLocationID) ),
             ( "PickupAddress", ds(self.PickupAddress) ),
             ( "IsGoodWithCats", di(self.IsGoodWithCats) ),
@@ -2177,7 +2353,7 @@ class Animal:
             ( "LastChangedBy", ds(self.LastChangedBy) ),
             ( "LastChangedDate", dd(self.LastChangedDate) )
             )
-        sys.stderr.write("animal: %d %s %s %s, %s %s, intake %s, dob %s\n" % (self.ID, self.AnimalName, self.ShelterCode, self.ShortCode, self.BreedName, species_name_for_id(self.SpeciesID), self.DateBroughtIn, self.DateOfBirth))
+        sys.stderr.write("animal: %d %s %s %s, %s %s, arc: %s, ns: %s, intake %s, dob %s\n" % (self.ID, self.AnimalName, self.ShelterCode, self.ShortCode, self.BreedName, species_name_for_id(self.SpeciesID), self.Archived, self.NonShelterAnimal, self.DateBroughtIn, self.DateOfBirth))
         return makesql("animal", s)
 
 class Log:
@@ -2310,6 +2486,7 @@ class Owner:
     IsGiftAid = 0
     IsDeceased = 0
     ExcludeFromBulkEmail = 0
+    GDPRContactOptIn = ""
     HomeCheckAreas = ""
     DateLastHomeChecked = None
     HomeCheckedBy = 0
@@ -2339,13 +2516,16 @@ class Owner:
     def __init__(self, ID = 0):
         self.ID = ID
         if ID == 0: self.ID = getid("owner")
-    def SplitName(self, name):
+    def SplitName(self, name, lastwordassurname = True):
         """
         Uses the last word as surname and first ones as
-        forenames, sets ownername
+        forenames, sets ownername.
+        if lastwordassurname is False, uses first word as forenames and
+        everything else as surname.
         """
         self.OwnerName = name
         lastspace = name.rfind(" ")
+        if lastwordassurname == False: lastspace = name.find(" ")
         if lastspace == -1:
             self.OwnerSurname = name
         else:
@@ -2395,6 +2575,7 @@ class Owner:
             ( "IsGiftAid", di(self.IsGiftAid) ),
             ( "IsDeceased", di(self.IsDeceased) ),
             ( "ExcludeFromBulkEmail", di(self.ExcludeFromBulkEmail) ),
+            ( "GDPRContactOptIn", ds(self.GDPRContactOptIn) ),
             ( "HomeCheckAreas", ds(self.HomeCheckAreas) ),
             ( "DateLastHomeChecked", dd(self.DateLastHomeChecked) ),
             ( "HomeCheckedBy", di(self.HomeCheckedBy) ),
@@ -2515,3 +2696,97 @@ class OwnerLicence:
             ( "LastChangedDate", dd(self.LastChangedDate) )
             )
         return makesql("ownerlicence", s)
+
+class StockLevel:
+    ID = 0
+    Name = ""
+    Description = ""
+    StockLocationID = 1
+    UnitName = ""
+    Total = 0
+    Balance = 0
+    Expiry= None
+    BatchNumber = ""
+    Cost = 0
+    UnitPrice = 0
+    CreatedDate = None
+    def __init__(self, ID = 0):
+        self.ID = ID
+        if ID == 0: self.ID = getid("stocklevel")
+    def __str__(self):
+        s = (
+            ( "ID", di(self.ID) ),
+            ( "Name", ds(self.Name) ),
+            ( "Description", ds(self.Description) ),
+            ( "StockLocationID", di(self.StockLocationID) ),
+            ( "UnitName", ds(self.UnitName) ),
+            ( "Total", di(self.Total) ),
+            ( "Balance", di(self.Balance) ),
+            ( "Expiry", dd(self.Expiry) ),
+            ( "BatchNumber", ds(self.BatchNumber) ),
+            ( "Cost", di(self.Cost) ),
+            ( "UnitPrice", di(self.UnitPrice) ),
+            ( "CreatedDate", dd(self.CreatedDate) )
+            )
+        return makesql("stocklevel", s)
+
+
+
+# Dictionary of entry reasons
+entryreasons = {
+    "Marriage/Relationship split": EntryReason(1, "Marriage/Relationship split"),
+    "Allergies": EntryReason(2, "Allergies"),
+    "Biting": EntryReason(3, "Biting"),
+    "Unable to Cope": EntryReason(4, "Unable to Cope"),
+    "Unsuitable Accommodation": EntryReason(5, "Unsuitable Accommodation"),
+    "Died": EntryReason(6, "Died"),
+    "Stray": EntryReason(7, "Stray"),
+    "Sick/Injured": EntryReason(8, "Sick/Injured"),
+    "Unable to Afford": EntryReason(9, "Unable to Afford"),
+    "Abuse": EntryReason(10, "Abuse"),
+    "Abandoned": EntryReason(11, "Abandoned"),
+    "Boarding": EntryReason(12, "Boarding"),
+    "Born in Shelter": EntryReason(13, "Born in Shelter"),
+    "TNR - Trap/Neuter/Release": EntryReason(14, "TNR - Trap/Neuter/Release"),
+    "Transfer from Other Shelter": EntryReason(15, "Transfer from Other Shelter"),
+    "Transfer from Municipal Shelter": EntryReason(16, "Transfer from Municipal Shelter"),
+    "Surrender": EntryReason(17, "Surrender"),
+    "Too Many Animals": EntryReason(18, "Too Many Animals")
+}
+
+# Dictionary of donation types
+donationtypes = {
+    "Donation": DonationType(1, "Donation"),
+    "Adoption Fee": DonationType(2, "Adoption Fee"),
+    "Waiting List Donation": DonationType(3, "Waiting List Donation"),
+    "Entry Donation": DonationType(4, "Entry Donation"),
+    "Animal Sponsorship": DonationType(5, "Animal Sponsorship"),
+    "In-Kind Donation": DonationType(6, "In-Kind Donation")
+}
+
+# Dictionary of test types
+testtypes = {
+    "FIV": TestType(1, "FIV"),
+    "FLV": TestType(2, "FLV"),
+    "Heartworm": TestType(3, "Heartworm")
+}
+
+# Dictionary of vaccination types
+vaccinationtypes = {
+    "Distemper": VaccinationType(1, "Distemper"),
+    "Hepatitis": VaccinationType(2, "Hepatitis"),
+    "Leptospirosis": VaccinationType(3, "Leptospirosis"),
+    "Rabies": VaccinationType(4, "Rabies"),
+    "Parainfluenza": VaccinationType(5, "Parainfluenza"),
+    "Bordetella": VaccinationType(6, "Bordetella"), 
+    "Parvovirus": VaccinationType(7, "Parvovirus"),
+    "DHLPP": VaccinationType(8, "DHLPP"),
+    "FVRCP": VaccinationType(9, "FVRCP"),
+    "Chlamydophila": VaccinationType(10, "Chlamydophila"),
+    "FIV": VaccinationType(11, "FIV"),
+    "FeLV": VaccinationType(12, "FeLV"),
+    "FIPV": VaccinationType(13, "FIPV"),
+    "FECV/FeCoV": VaccinationType(14, "FECV/FeCoV")
+}
+
+

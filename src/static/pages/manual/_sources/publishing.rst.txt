@@ -56,6 +56,18 @@ The All Publishers tab allows you to set options common to all internet publishe
   Animals who are marked as held awaiting reclaim will *not* be registered until
   after the hold is removed.
 
+* Register microchips from: When registering microchips, only consider animals
+  where the event triggering registration (intake, adoption, reclaim, etc)
+  occurred after this date. This is useful when enabling registration for the
+  first time on a database full of a historic data where you do not want to
+  re-register old chips to potentially out of date adopters.
+
+* Update adoption websites every: Some adoption websites will accept updates
+  more frequently than the 24 hour default. Setting this option to a value
+  smaller than 24 will update those services at the chosen interval. Services
+  affected by this value are PetFinder, AdoptAPet, PetRescue, SavourLife and
+  Maddie's Pet Assistant
+
 * Reupload animal images every time: Ticking this box will tell the publisher
   to reupload images for all the animals published. Normally, ASM will not
   upload an image it has previously uploaded to save bandwidth. ASM will detect
@@ -71,6 +83,10 @@ The All Publishers tab allows you to set options common to all internet publishe
 
 * Order published animals by: Sorts the list of animals before they are
   published.
+
+* Thumbnail size: Controls the size of thumbnails the system generates for adoptable 
+  animal publishers (in particular the ones used by the javascript include 
+  method of website integration). The size is for the thumbnail's longest side.
 
 * Animal descriptions: This determines the source of the main description for
   animals when being published. For the HTML/FTP publisher, this is the source
@@ -94,6 +110,8 @@ and age, or arranged numerically with a fixed number of animals per page. In
 addition, a recently adopted page can be generated along with an rss.xml for
 feed readers.
 
+.. warning:: Static HTML publishing is deprecated for sheltermanager.com and is no longer available.
+
 * Generate javascript database: The site search facilities require a Javascript
   database, indexing the available animal records. If you wish to include
   search facilities, make sure this box is ticked. 
@@ -104,7 +122,7 @@ feed readers.
   in a template to get the thumbnail image for the current animal. 
 
 * Thumbnail size: The desired length in pixels of the longest side of the
-  thumbnail.
+  generated thumbnail.
 
 * Output a separate page for each animal type: Output extra pages of the form
   ANIMALTYPE.EXTENSION, eg: Miscellaneous.html. This means you can reference
@@ -155,13 +173,9 @@ feed readers.
   per page, however the more animals you put on a page, the longer the page
   will take to load.
 
-* Scale published images to: Modern digital cameras can take very high quality
-  images - so much so that they could take a very long time for users to
-  download (particularly for people with modems). Also, if your shelter's
-  connection to the internet is over a modem, it could take a long time for the
-  site to upload. This box allows you to reduce the size of your images to
-  scaled JPEGs with the resolutions specified. ASM scales down pictures when
-  you attach them under the media tab, so unless you want to make them smaller
+* Scale published images to: This box allows you to reduce the size of your
+  animal images to a particular resolution.  ASM scales down pictures when you
+  attach them under the media tab, so unless you want to make them smaller
   still, it's best to leave this at No Scaling.  
   
 * Publish to folder: Choose the folder where output is to be generated. 
@@ -279,9 +293,13 @@ can also integrate with PetFinder.com and upload your animals for adoption
 directly to your account with them.  You will need to go to
 :menuselection:`Publishing --> Set Publishing Options` first and view the
 PetFinder panel. Here, you should enter the shelter Id given to you by
-PetFinder.com and your password. All you need to do then is choose Publish to
-PetFinder.com in place of the normal internet publisher. The options for
-filtering animals are the same (see previous section for reference).
+PetFinder.com and the FTP password they have assigned to you.
+
+You can also opt to have your shelter animals with the "Hold" flag sent with
+the PetFinder H status, and shelter animals who have the word "Stray" in
+their entry category sent with an F status. This will put those animals into
+PetFinder's lost and found database to help with reuniting stray pets with
+their owners.
 
 .. note:: If you have created new Species or Breeds within ASM, you will need to map them to the available publisher options under the Breed and Species sections of :menuselection:`Settings --> Lookup Data`
 
@@ -297,6 +315,29 @@ triggered by setting your second breed to "Crossbreed", "Unknown" or "Mix".
 
 .. warning:: You have to let PetFinder know that you are using ASM to upload your data. Do this by logging into the PetFinder members area, go to the Admin System Help Center, then Contact Us and send PetFinder Tech Support a message that you are using ASM to publish animal data via their FTP server. They should give you the FTP login information and make sure permissions and quotas are correct.
 
+Extra fields
+^^^^^^^^^^^^
+
+PetFinder have a number of extra fields that you can set by creating additional
+animal fields with certain names in your database. The system responds to the
+field names, you can label them anything you want, they must be linked to
+animal records.
+
+* pfprimarycolor, pfsecondarycolor, pftertiarycolor (Text): ASM only uses a
+  single value for animal color, so our color field cannot be mapped to PetFinder. 
+  Instead, you can add the three color fields that PetFinder used and supply 
+  appropriate values. The values they will accept for color depend on the species
+  of your animal and can be found here: https://github.com/bobintetley/asm3/files/3487421/import.breeds.coats.colors.updated.Aug.2019.xlsx
+
+* pfcoatlength (Text): PetFinder can accept a coat length value, which is one of
+  Short, Long, Medium, Wire, Hairless, Curly
+
+* pfadoptionfeewaived (Bool): a 1 or 0 to indicate that there is no adoption fee 
+  for this animal.
+
+* pfspecialneedsnotes (Text): If the animal has special needs, you can add a
+  note about those needs to be output on their PetFinder listing.
+
 petrescue.com.au
 ----------------
 
@@ -311,23 +352,23 @@ Publish to PetRescue.com.au in place of the normal internet publisher. The
 options for filtering animals are the same (see previous section for
 reference).
 
-Options are available to override the desex flag to send all your animals and to 
-indicate which states you will adopt animals to. These are necessary as some
-states have different rules on whether a microchip number or other identifier 
-is needed. The state the animal is currently located in (from the fosterer
-record if available or shelter details) is implicitly added to this set.
+Determing whether an animal is vaccinated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-ASM will determined if your animals are vaccinated, wormed or heartworm treated
+ASM will determine if your animals are vaccinated, wormed or heartworm treated
 and indicate this to PetRescue via the following rules:
 
 * If the animal has at least 1 previously given vaccination on file and there
   are no vaccinations outstanding, the vaccination flag is set.
 
-* If the animal has a medical treatment containing the word "wormed" and not
+* If the animal has a medical treatment containing the word "worm" and not
   the word "heart" in the last 6 months, the wormed flag is set.
 
 * If the animal has a medical treatment containing the words "heart" and
-  "wormed" in the last 6 months, the heartworm treated flag is set.
+  "worm" in the last 6 months, the heartworm treated flag is set.
+
+Extra fields
+^^^^^^^^^^^^
 
 PetRescue have a number of extra fields that you can set by creating additional
 animal fields with certain names in your database. The system responds to the
@@ -347,6 +388,8 @@ animal records.
 * bredincareofgroup (Yes/No): Indicates the animal was bred whilst in the care
   of the group. Setting this to true makes breederid mandatory for all listings
   in South Australia after July 2018.
+
+* needsfoster (Yes/No): Indicates that foster care is required for the animal.
 
 * sourcenumber (Text): Required for all cat and dog listings in Victoria
 
@@ -389,6 +432,28 @@ password given to you by SavourLife. The options for filtering animals are the
 same as for other publishers, although ASM will only send dogs (Species 1) as
 SavourLife will not accept listings for other species of animals.
 
+Note that regardless of whether you have set the publishing option to
+"Include animals who don't have a picture", SavourLife will not accept listings
+without a photo, so we will not send animals who do not have a photo.
+
+Determing whether an animal is vaccinated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ASM will determined if your dogs are vaccinated, wormed or heartworm treated
+and indicate this to SavourLife via the following rules:
+
+* If the animal has at least 1 previously given vaccination on file and there
+  are no vaccinations outstanding, the vaccination flag is set.
+
+* If the animal has a medical treatment containing the word "worm" and not
+  the word "heart" in the last 6 months, the wormed flag is set.
+
+* If the animal has a medical treatment containing the words "heart" and
+  "worm" in the last 6 months, the heartworm treated flag is set.
+
+Extra fields
+^^^^^^^^^^^^
+
 SavourLife have extra fields that you can set by creating additional 
 fields with certain names in your database. The system responds to the field
 names, you can label them anything you want, they must be linked to animal
@@ -398,6 +463,11 @@ records.
   number that can be given to the shelter. This enquiry number is used to link
   adopters with the adopted animal and qualify them for free food from
   SavourLife.
+
+* needsfoster (Yes/No): Indicates that foster care is required for the animal.
+
+* interstateadoptable (Yes/No): Overrides the global interstate adoptable value on
+  the config screen and allows you to apply it on a per-animal basis instead.
 
 .. note:: SavourLife integration relies on you naming your breeds and species with the same values that they do. If a breed does not match one of the SavourLife breeds, ASM will send it as "Mixed Breed" instead. 
 
@@ -454,17 +524,21 @@ ASM tracks the date Anibase was last updated, so if the animal is returned and
 adopted again, another update will be done automatically.
 
 AKC Reunite
-----------
+-----------
 
 ASM can register microchips with AKC Reunite, part of the American Kennel Club,
 who supply microchips to US organisations and pet owners. AKC microchips are 
 either 15-digits, starting with 956 or 10-digits, starting with 0006 or 0007.
 
-FoundAnimals
--------
+They will optionally accept registration of any microchip, although this has
+to be agreed with them first. 
 
-ASM can register microchips with microchipregistry.foundanimals.org, a
-non-profit organisation that supplies microchips to US shelters.
+FoundAnimals/24Pet
+------------------
+
+ASM can register microchips with foundanimals.org (now named FoundAnimals/24Pet
+after being acquired by PetHealth), a non-profit organisation that supplies
+microchips to US shelters.
 
 Their microchip registry is completely free and accepts microchips from any
 provider. To signup, just get in touch and request a folder name from them
@@ -511,3 +585,19 @@ SmartTag also supply ISO microchips. ASM will also register SmartTag microchips
 (15 digits starting with 90007400) in a similar manner to ASM's other chip
 registration publishers.
 
+Exclude animals from specific publishers
+----------------------------------------
+
+It is possible to exclude an animal from a specific publisher. To do this,
+create a new animal flag called "Exclude from PUBLISHER", where PUBLISHER is
+the name of the service you wish to exclude. Eg: "Exclude from PetFinder".
+
+Assigning this animal flag to your animal will then prevent it being sent by
+that publisher. You can create flags for all the 3rd party publishers you use
+and assign them in combination where necessary.
+
+The flag names are not case sensitive. The names should not include any domains,
+eg: petfinder, adoptapet, rescuegroups, maddiesfund, petrescue, savourlife
+
+This is useful in situations where you get inundanted with applications for
+very popular animals and only want to put them on your own website.

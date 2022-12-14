@@ -1,16 +1,17 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
-/*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, format, header, html, validate */
+/*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, edit_header, format, header, html, validate */
 
 $(function() {
 
-    var person_find_results = {
+    "use strict";
+
+    const person_find_results = {
 
         render: function() {
             return [
                 html.content_header(_("Results")),
                 '<div id="asm-results">',
                 '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 0 .7em">',
-                '<p><span class="ui-icon ui-icon-search" style="float: left; margin-right: .3em;"></span>',
+                '<p><span class="ui-icon ui-icon-search"></span>',
                 _("Search returned {0} results.").replace("{0}", controller.rows.length),
                 '</p>',
                 '</div>',
@@ -29,8 +30,8 @@ $(function() {
          * Renders the table.head tag with columns in the right order
          */
         render_tablehead: function() {
-            var labels = person_find_results.column_labels();
-            var s = [];
+            let labels = person_find_results.column_labels();
+            let s = [];
             s.push("<thead>");
             s.push("<tr>");
             $.each(labels, function(i, label) {
@@ -46,21 +47,21 @@ $(function() {
          * highlighting styling applied, etc.
          */
         render_tablebody: function() {
-            var h = [];
+            let h = [];
             $.each(controller.rows, function(ir, row) {
                 h.push("<tr>");
                 $.each(person_find_results.column_names(), function(ic, name) {
 
                     // Generate the person selector
-                    var link = "<span style=\"white-space: nowrap\"><a id=\"action-" + row.ID + "\" href=\"person?id=" + row.ID + "\">";
+                    let link = "<span style=\"white-space: nowrap\"><a id=\"action-" + row.ID + "\" href=\"person?id=" + row.ID + "\">";
                     h.push("<td>");
-                    var value = "";
+                    let value = "";
                     if (row.hasOwnProperty(name.toUpperCase())) {
                         value = row[name.toUpperCase()];
                     }
-                    var formatted = person_find_results.format_column(row, name, value, controller.additional);
+                    let formatted = person_find_results.format_column(row, name, value, controller.additional);
                     if (name == "OwnerName") { 
-                        if ($.trim(value) == "") { 
+                        if (common.trim(value) == "") { 
                             formatted += _("(blank)"); 
                         }
                         formatted = link + formatted + "</a></span>";
@@ -87,10 +88,13 @@ $(function() {
          * Returns a list of our configured viewable column names
          */
         column_names: function() {
-            var cols = [];
+            let cols = [];
             $.each(config.str("OwnerSearchColumns").split(","), function(i, v) {
-                cols.push($.trim(v));
+                cols.push(common.trim(v));
             });
+            // If OwnerName is not present in the list, insert it as the first column to make
+            // sure there's still a link displayed to the target record
+            if (!common.array_in("OwnerName", cols)) { cols.unshift("OwnerName"); } 
             return cols;
         },
 
@@ -98,8 +102,8 @@ $(function() {
          * Returns a list of our configured viewable column labels
          */
         column_labels: function() {
-            var names = person_find_results.column_names();
-            var labels = [];
+            let names = person_find_results.column_names();
+            let labels = [];
             $.each(names, function(i, name) {
                 labels.push(person_find_results.column_label(name, controller.additional));
             });
@@ -118,8 +122,9 @@ $(function() {
          * add: Additional fields to scan for labels
          */
         column_label: function(name, add) {
-            var labels = {
+            let labels = {
                 "CreatedBy": _("Created By"),
+                "CreatedDate": _("Created Date"),
                 "OwnerTitle":  _("Title"),
                 "OwnerInitials":  _("Initials"),
                 "OwnerForenames":  _("Forenames"),
@@ -150,6 +155,8 @@ $(function() {
                 "IsRetailer":  _("Retailer"),
                 "IsVet":  _("Vet"),
                 "IsGiftAid":  _("GiftAid"),
+                "AdditionalFlags": _("Flags"),
+                "LookingForSummary": _("Looking For"),
                 "HomeCheckAreas":  _("Areas"),
                 "DateLastHomeChecked":  _("Homechecked"),
                 "HomeCheckedBy":  _("Checked By")
@@ -158,7 +165,7 @@ $(function() {
                 return labels[name];
             }
             if (add) {
-                var addrow = common.get_row(add, name, "FIELDNAME");
+                let addrow = common.get_row(add, name, "FIELDNAME");
                 if (addrow) { return addrow.FIELDLABEL; }
             }
             return name;
@@ -172,15 +179,16 @@ $(function() {
          * add: The additional row results
          */
         format_column: function(row, name, value, add) {
-            var DATE_FIELDS = [ "MembershipExpiryDate", "DateLastHomeChecked" ],
-            STRING_FIELDS = [ "CreatedBy", "OwnerTitle", "OwnerInitials", "OwnerForenames", "OwnerSurname",
+            const DATE_FIELDS = [ "CreatedDate", "MembershipExpiryDate", "DateLastHomeChecked" ];
+            const STRING_FIELDS = [ "CreatedBy", "OwnerTitle", "OwnerInitials", "OwnerForenames", "OwnerSurname",
                 "OwnerName", "OwnerAddress", "OwnerTown", "OwnerCounty", "OwnerPostcode",
                 "HomeTelephone", "WorkTelephone", "MobileTelephone", "EmailAddress",
-                "Comments", "MembershipNumber", "HomeCheckAreas" ],
-            YES_NO_FIELDS = [ "IDCheck", "IsBanned", "IsVolunteer", "IsHomeChecker", 
+                "MembershipNumber", "HomeCheckAreas", "LookingForSummary" ];
+            const COMMENT_FIELDS = [ "Comments" ];
+            const YES_NO_FIELDS = [ "IDCheck", "IsBanned", "IsVolunteer", "IsHomeChecker", 
                 "IsMember", "IsDonor", "IsShelter", "IsACO", "IsStaff", "IsFosterer",
-                "IsRetailer", "IsVet", "IsGiftAid" ],
-            rv = "";
+                "IsRetailer", "IsVet", "IsGiftAid" ];
+            let rv = "";
             if (name == "Jurisdiction") {
                 rv = row.JURISDICTIONNAME;
             }
@@ -193,12 +201,18 @@ $(function() {
             else if ($.inArray(name, STRING_FIELDS) > -1) {
                 rv = value;
             }
+            else if ($.inArray(name, COMMENT_FIELDS) > -1) {
+                rv = html.truncate(value);
+            }
             else if ($.inArray(name, YES_NO_FIELDS) > -1) {
                 if (value == 0) { rv = _("No"); }
                 if (value == 1) { rv = _("Yes"); }
             }
+            else if ( name == "AdditionalFlags") {
+                rv = edit_header.person_flags(row);
+            }
             else if ( name == "Image" ) {
-                rv = "<img class=\"asm-thumbnail thumbnailshadow\" src=\"" + html.thumbnail_src(row, "animalthumb") + "\" />";
+                rv = "<img class=\"asm-thumbnail thumbnailshadow\" src=\"" + html.thumbnail_src(row, "personthumb") + "\" />";
             }
             else if (add) {
                 $.each(add, function(i, v) {

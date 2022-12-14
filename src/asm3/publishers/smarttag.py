@@ -69,11 +69,11 @@ class SmartTagPublisher(FTPPublisher):
 
         # SmartTag want data files called shelterid_mmddyyyy_HHMMSS.csv in a folder
         # called shelterid_mmddyyyy_HHMMSS
-        dateportion = asm3.i18n.format_date("%m%d%Y_%H%M%S", asm3.i18n.now(self.dbo.timezone))
+        dateportion = asm3.i18n.format_date(asm3.i18n.now(self.dbo.timezone), "%m%d%Y_%H%M%S")
         folder = "%s_%s" % (shelterid, dateportion)
         outputfile = "%s_%s.csv" % (shelterid, dateportion)
         self.mkdir(folder)
-        self.chdir(folder)
+        self.chdir(folder, folder)
 
         csv = []
 
@@ -81,7 +81,7 @@ class SmartTagPublisher(FTPPublisher):
         for an in animals:
             try:
                 anCount += 1
-                self.log("Processing: %s: %s (%d of %d)" % ( an["SHELTERCODE"], an["ANIMALNAME"], anCount, len(animals)))
+                self.log("Processing: %s: %s (%d of %d)" % ( an.SHELTERCODE, an.ANIMALNAME, anCount, len(animals)))
                 self.updatePublisherProgress(self.getProgress(anCount, len(animals)))
 
                 # If the user cancelled, stop now
@@ -92,7 +92,7 @@ class SmartTagPublisher(FTPPublisher):
                     return
 
                 # Upload one image for this animal with the name shelterid_animalid-1.jpg
-                self.uploadImage(an, an["WEBSITEMEDIANAME"], "%s_%d-1.jpg" % (shelterid, an["ID"]))
+                self.uploadImage(an, an.WEBSITEMEDIAID, an.WEBSITEMEDIANAME, "%s_%d-1.jpg" % (shelterid, an.ID))
 
                 csv.append( self.processAnimal(an, shelterid) )
 
@@ -123,6 +123,8 @@ class SmartTagPublisher(FTPPublisher):
 
     def processAnimal(self, an, shelterid=""):
         """ Process an animal record and return a CSV line """
+        reccountry = an.CURRENTOWNERCOUNTRY
+        if reccountry is None or reccountry == "": reccountry = "USA"
         line = []
         # accountid
         line.append("\"%s\"" % shelterid)
@@ -177,7 +179,7 @@ class SmartTagPublisher(FTPPublisher):
         # addresspostal
         line.append("\"%s\"" % an["CURRENTOWNERPOSTCODE"])
         # addressctry
-        line.append("\"USA\"")
+        line.append("\"%s\"" % reccountry)
         # owneremail
         line.append("\"%s\"" % an["CURRENTOWNEREMAILADDRESS"])
         # owneremail2
@@ -191,7 +193,7 @@ class SmartTagPublisher(FTPPublisher):
         # ownerthirdphone
         line.append("\"%s\"" % an["CURRENTOWNERMOBILETELEPHONE"])
         # petname
-        line.append("\"%s\"" % an["ANIMALNAME"].replace("\"", "\"\""))
+        line.append("\"%s\"" % an["ANIMALNAME"])
         # species
         line.append("\"%s\"" % an["SPECIESNAME"])
         # primarybreed
@@ -224,5 +226,5 @@ class SmartTagPublisher(FTPPublisher):
             line.append("\"ADOPTED\"")
         else:
             line.append("\"NOT ADOPTED\"")
-        return ",".join(line)
+        return self.csvLine(line)
 

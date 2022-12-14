@@ -4,6 +4,9 @@ import asm3.audit
 import asm3.configuration
 import asm3.i18n
 import asm3.movement
+import asm3.paymentprocessor.paypal
+import asm3.paymentprocessor.stripeh
+import asm3.paymentprocessor.cardcom
 import asm3.utils
 
 import sys
@@ -28,6 +31,13 @@ THIS_YEAR = 2
 LAST_MONTH = 3
 LAST_WEEK = 4
 
+WEEKLY = 1
+FORTNIGHTLY = 2
+MONTHLY = 3
+QUARTERLY = 4
+HALF_YEARLY = 5
+ANNUALLY = 6
+
 ASCENDING = 0
 DESCENDING = 1
 
@@ -45,13 +55,17 @@ def get_citation_query(dbo):
 
 def get_donation_query(dbo):
     return "SELECT od.ID, od.DonationTypeID, od.DonationPaymentID, dt.DonationName, od.Date, od.DateDue, " \
-        "od.Donation, p.PaymentName, od.IsGiftAid, lk.Name AS IsGiftAidName, od.Frequency, " \
+        "od.Donation, od.MovementID, p.PaymentName, od.IsGiftAid, lk.Name AS IsGiftAidName, od.Frequency, " \
         "od.Quantity, od.UnitPrice, " \
+        "od.Donation AS Gross, " \
+        "od.Donation - COALESCE(od.VATAmount, 0) - COALESCE(od.Fee, 0) AS Net, " \
         "fr.Frequency AS FrequencyName, od.NextCreated, " \
         "od.ReceiptNumber, od.ChequeNumber, od.Fee, od.IsVAT, od.VATRate, od.VATAmount, " \
         "od.CreatedBy, od.CreatedDate, od.LastChangedBy, od.LastChangedDate, " \
         "od.Comments, o.OwnerTitle, o.OwnerInitials, o.OwnerSurname, o.OwnerForenames, " \
-        "o.OwnerName, a.AnimalName, a.ShelterCode, a.ShortCode, a.ID AS AnimalID, o.ID AS OwnerID, " \
+        "o.OwnerName, o.OwnerCode, o.OwnerAddress, o.OwnerTown, o.OwnerCounty, o.OwnerPostcode, " \
+        "o.HomeTelephone, o.WorkTelephone, o.MobileTelephone, o.EmailAddress, o.AdditionalFlags, " \
+        "a.AnimalName, a.ShelterCode, a.ShortCode, a.ID AS AnimalID, o.ID AS OwnerID, " \
         "a.HasActiveReserve, a.HasTrialAdoption, a.CrueltyCase, a.NonShelterAnimal, " \
         "a.Neutered, a.IsNotAvailableForAdoption, a.IsHold, a.IsQuarantine, a.ShelterLocationUnit, " \
         "a.CombiTestResult, a.FLVResult, a.HeartwormTestResult, " \
@@ -74,18 +88,16 @@ def get_donation_query(dbo):
         "(SELECT LocationName FROM internallocation WHERE ID=a.ShelterLocation) " \
         "END AS DisplayLocationName, " \
         "(SELECT LocationName FROM internallocation WHERE ID=a.ShelterLocation) AS ShelterLocationName, " \
-        "co.OwnerName AS CurrentOwnerName, " \
-        "od.MovementID, o.OwnerAddress, o.OwnerTown, o.OwnerCounty, o.OwnerPostcode, " \
-        "o.HomeTelephone, o.WorkTelephone, o.MobileTelephone, o.EmailAddress, o.AdditionalFlags " \
+        "co.OwnerName AS CurrentOwnerName " \
         "FROM ownerdonation od " \
         "LEFT OUTER JOIN animal a ON a.ID = od.AnimalID " \
         "LEFT OUTER JOIN adoption ad ON ad.ID = a.ActiveMovementID " \
         "LEFT OUTER JOIN owner co ON co.ID = ad.OwnerID " \
         "LEFT OUTER JOIN donationpayment p ON od.DonationPaymentID = p.ID " \
         "LEFT OUTER JOIN lksyesno lk ON lk.ID = od.IsGiftAid " \
-        "INNER JOIN owner o ON o.ID = od.OwnerID " \
-        "INNER JOIN donationtype dt ON dt.ID = od.DonationTypeID " \
-        "INNER JOIN lksdonationfreq fr ON fr.ID = od.Frequency "
+        "LEFT OUTER JOIN owner o ON o.ID = od.OwnerID " \
+        "LEFT OUTER JOIN donationtype dt ON dt.ID = od.DonationTypeID " \
+        "LEFT OUTER JOIN lksdonationfreq fr ON fr.ID = od.Frequency "
 
 def get_licence_query(dbo):
     return "SELECT ol.ID, ol.LicenceTypeID, ol.IssueDate, ol.ExpiryDate, lt.LicenceTypeName, " \
@@ -103,10 +115,12 @@ def get_licence_query(dbo):
 def get_voucher_query(dbo):
     return "SELECT ov.*, v.VoucherName, o.OwnerName, " \
         "o.OwnerAddress, o.OwnerTown, o.OwnerCounty, o.OwnerPostcode, " \
-        "o.HomeTelephone, o.WorkTelephone, o.MobileTelephone, o.EmailAddress, o.AdditionalFlags " \
+        "o.HomeTelephone, o.WorkTelephone, o.MobileTelephone, o.EmailAddress, o.AdditionalFlags, " \
+        "a.AnimalName, a.ShelterCode, a.ShortCode " \
         "FROM ownervoucher ov " \
         "INNER JOIN voucher v ON v.ID = ov.VoucherID " \
-        "INNER JOIN owner o ON o.ID = ov.OwnerID "
+        "INNER JOIN owner o ON o.ID = ov.OwnerID " \
+        "LEFT OUTER JOIN animal a ON ov.AnimalID = a.ID "
 
 def get_account_code(dbo, accountid):
     """
@@ -142,13 +156,14 @@ def get_account_id(dbo, code):
     """
     return dbo.query_int("SELECT ID FROM accounts WHERE Code = ?", [code])
     
-def get_accounts(dbo, onlyactive = False, onlybank = False):
+def get_accounts(dbo, onlyactive = False, onlybank = False, onlyexpense = False, onlyincome = False):
     """
     Returns all of the accounts with reconciled/balance figures
     ID, CODE, DESCRIPTION, ACCOUNTTYPE, DONATIONTYPEID, RECONCILED, BALANCE, VIEWROLEIDS, VIEWROLES, EDITROLEIDS, EDITROLES
     If an accounting period has been set, balances are calculated from that point.
     onlyactive: If set to true, only accounts with ARCHIVED == 0 are returned
     onlybank: If set to true, only accounts with ACCOUNTTYPE = 1 are returned
+    onlyexpense: If set to true, only accounts with ACCOUNTTYPE = 4 are returned
     """
     l = dbo.locale
     pfilter = ""
@@ -161,6 +176,12 @@ def get_accounts(dbo, onlyactive = False, onlybank = False):
     bfilter = ""
     if onlybank:
         bfilter = "AND a.AccountType = %d" % BANK
+    efilter = ""
+    if onlyexpense:
+        efilter = "AND a.AccountType = %d" % EXPENSE
+    ifilter = ""
+    if onlyincome:
+        ifilter = "AND a.AccountType = %d" % INCOME
     roles = dbo.query("SELECT ar.*, r.RoleName FROM accountsrole ar INNER JOIN role r ON ar.RoleID = r.ID")
     accounts = dbo.query("SELECT a.*, at.AccountType AS AccountTypeName, " \
         "dt.DonationName, " \
@@ -171,8 +192,8 @@ def get_accounts(dbo, onlyactive = False, onlybank = False):
         "FROM accounts a " \
         "INNER JOIN lksaccounttype at ON at.ID = a.AccountType " \
         "LEFT OUTER JOIN donationtype dt ON dt.ID = a.DonationTypeID " \
-        "WHERE a.ID > 0 %s %s " \
-        "ORDER BY a.AccountType, a.Code" % (pfilter, pfilter, pfilter, pfilter, afilter, bfilter))
+        "WHERE a.ID > 0 %s %s %s %s " \
+        "ORDER BY a.AccountType, a.Code" % (pfilter, pfilter, pfilter, pfilter, afilter, bfilter, efilter, ifilter))
     for a in accounts:
         dest = a.dest
         src = a.src
@@ -290,13 +311,14 @@ def get_transactions(dbo, accountid, datefrom, dateto, reconciled=BOTH):
     rows = dbo.query("SELECT t.*, srcac.Code AS SrcCode, destac.Code AS DestCode, " \
         "o.OwnerName AS PersonName, o.ID AS PersonID, a.ID AS DonationAnimalID, " \
         "a.AnimalName AS DonationAnimalName, " \
+        "od.ReceiptNumber AS DonationReceiptNumber, " \
         "CASE " \
         "WHEN EXISTS(SELECT ItemValue FROM configuration WHERE ItemName Like 'UseShortShelterCodes' AND ItemValue = 'Yes') " \
-        "THEN a.ShelterCode ELSE a.ShortCode END AS DonationAnimalCode, " \
+        "THEN a.ShortCode ELSE a.ShelterCode END AS DonationAnimalCode, " \
         "aca.AnimalName AS CostAnimalName, aca.ID AS CostAnimalID, " \
         "CASE " \
         "WHEN EXISTS(SELECT ItemValue FROM configuration WHERE ItemName Like 'UseShortShelterCodes' AND ItemValue = 'Yes') " \
-        "THEN aca.ShelterCode ELSE aca.ShortCode END AS CostAnimalCode " \
+        "THEN aca.ShortCode ELSE aca.ShelterCode END AS CostAnimalCode " \
         "FROM accountstrx t " \
         "LEFT OUTER JOIN accounts srcac ON srcac.ID = t.SourceAccountID " \
         "LEFT OUTER JOIN accounts destac ON destac.ID = t.DestinationAccountID " \
@@ -371,7 +393,7 @@ def get_movement_donations(dbo, mid):
 
 def get_next_receipt_number(dbo):
     """ Returns the next receipt number for the frontend """
-    return asm3.utils.padleft(asm3.configuration.receipt_number_next(dbo), 8)
+    return asm3.utils.padleft( asm3.utils.cache_sequence(dbo, "receipt", "SELECT MAX(ReceiptNumber) FROM ownerdonation"), 8 )
 
 def get_donations(dbo, offset = "m31"):
     """
@@ -529,14 +551,43 @@ def get_licences(dbo, offset = "i31"):
         return dbo.query(get_licence_query(dbo) + " WHERE ol.ExpiryDate >= ? AND ol.ExpiryDate <= ? ORDER BY ol.ExpiryDate DESC", 
             (dbo.today(offsetdays*-1), dbo.today()))
 
-def get_vouchers(dbo, personid):
+def get_person_vouchers(dbo, personid):
     """
-    Returns a list of vouchers for an owner
-    ID, VOUCHERNAME, VOUCHERID, DATEISSUED, DATEEXPIRED,
-    VALUE, COMMENTS
+    Returns a list of vouchers for a person
     """
     return dbo.query(get_voucher_query(dbo) + \
         "WHERE ov.OwnerID = ? ORDER BY ov.DateIssued", [personid])
+
+def get_voucher(dbo, voucherid):
+    """
+    Returns a single voucher record
+    """
+    return dbo.first_row(dbo.query(get_voucher_query(dbo) + " WHERE ov.ID = ?", [voucherid]))
+
+def get_voucher_find_simple(dbo, vocode, dummy = 0):
+    return dbo.query(get_voucher_query(dbo) + \
+        "WHERE UPPER(ov.VoucherCode) LIKE UPPER(?)", [vocode])
+
+def get_vouchers(dbo, offset = "i31"):
+    """
+    Returns a list of vouchers 
+    offset is i to go backwards on issue date
+    or e to go forwards on expiry date
+    or p to go backwards on presented date
+    or a for unpresented
+    """
+    offsetdays = asm3.utils.cint(offset[1:])
+    if offset.startswith("a"):
+        return dbo.query(get_voucher_query(dbo) + " WHERE ov.DatePresented Is Null ORDER BY ov.DatePresented DESC")
+    if offset.startswith("i"):
+        return dbo.query(get_voucher_query(dbo) + " WHERE ov.DateIssued >= ? AND ov.DateIssued <= ? ORDER BY ov.DateIssued DESC", 
+            (dbo.today(offsetdays*-1), dbo.today()))
+    if offset.startswith("p"):
+        return dbo.query(get_voucher_query(dbo) + " WHERE ov.DatePresented >= ? AND ov.DatePresented <= ? ORDER BY ov.DatePresented DESC", 
+            (dbo.today(offsetdays*-1), dbo.today()))
+    if offset.startswith("e"):
+        return dbo.query(get_voucher_query(dbo) + " WHERE ov.DateExpired >= ? AND ov.DateExpired <= ? ORDER BY ov.DateExpired DESC", 
+            (dbo.today(), dbo.today(offsetdays)))
 
 def insert_donations_from_form(dbo, username, post, donationdate, force_receive = False, personid = 0, animalid = 0, movementid = 0, ignorezero = True):
     """
@@ -673,16 +724,21 @@ def delete_donation(dbo, username, did):
     dbo.delete("ownerdonation", did, username)
     asm3.movement.update_movement_donation(dbo, movementid)
 
-def receive_donation(dbo, username, did):
+def receive_donation(dbo, username, did, chequenumber = "", amount = 0, vat = 0, fee = 0, rawdata = ""):
     """
-    Marks a donation received
+    Marks a donation received. If any of the optional parameters are passed, they are updated.
+    The monetary amounts are expected to be integer currency amounts, not floats.
     """
     if id is None or did == "": return
     row = dbo.first_row(dbo.query("SELECT * FROM ownerdonation WHERE ID = ?", [did]))
     
-    dbo.update("ownerdonation", did, {
-        "Date":     dbo.today()
-    }, username)
+    d = { "Date": dbo.today(), "AnimalID": row.ANIMALID, "OwnerID": row.OWNERID }
+    if fee > 0: d["Fee"] = fee
+    if amount > 0: d["Donation"] = amount
+    if vat > 0: d["VAT"] = amount
+    if chequenumber != "": d["ChequeNumber"] = chequenumber
+    d["PaymentProcessorData"] = rawdata
+    dbo.update("ownerdonation", did, d, username)
 
     asm3.audit.edit(dbo, username, "ownerdonation", did, asm3.audit.get_parent_links(row), "receipt %s, id %s: received" % (row.RECEIPTNUMBER, did))
     update_matching_donation_transaction(dbo, username, did)
@@ -694,27 +750,27 @@ def check_create_next_donation(dbo, username, odid):
     a sequence needs to be created for donations with a frequency 
     """
     asm3.al.debug("Create next donation %d" % odid, "financial.check_create_next_donation", dbo)
-    d = dbo.query("SELECT * FROM ownerdonation WHERE ID = ?", [odid])
-    if len(d) == 0: 
+    d = dbo.first_row(dbo.query("SELECT * FROM ownerdonation WHERE ID = ?", [odid]))
+    if d is None:
         asm3.al.error("No donation found for %d" % odid, "financial.check_create_next_donation", dbo)
         return
 
-    d = d[0]
     # If we have a frequency > 0, the nextcreated flag isn't set
     # and there's a datereceived and due then we need to create the
     # next donation in the sequence
     if d.DATEDUE is not None and d.DATE is not None and d.FREQUENCY > 0 and d.NEXTCREATED == 0:
-
         nextdue = d.DATEDUE
-        if d.FREQUENCY == 1:
+        if d.FREQUENCY == WEEKLY:
             nextdue = asm3.i18n.add_days(nextdue, 7)
-        if d.FREQUENCY == 2:
+        elif d.FREQUENCY == FORTNIGHTLY:
+            nextdue = asm3.i18n.add_days(nextdue, 14)
+        elif d.FREQUENCY == MONTHLY:
             nextdue = asm3.i18n.add_months(nextdue, 1)
-        if d.FREQUENCY == 3:
+        elif d.FREQUENCY == QUARTERLY:
             nextdue = asm3.i18n.add_months(nextdue, 3)
-        if d.FREQUENCY == 4:
+        elif d.FREQUENCY == HALF_YEARLY:
             nextdue = asm3.i18n.add_months(nextdue, 6)
-        if d.FREQUENCY == 5:
+        elif d.FREQUENCY == ANNUALLY:
             nextdue = asm3.i18n.add_years(nextdue, 1)
         asm3.al.debug("Next donation due %s" % str(nextdue), "financial.check_create_next_donation", dbo)
 
@@ -768,18 +824,19 @@ def update_matching_cost_transaction(dbo, username, acid, destinationaccount = 0
 
     # Do we already have an existing transaction for this donation?
     # If we do, we only need to check the amounts as it's now the
-    # users problem if they picked the wrong donationtype/account
+    # users problem if they picked the wrong cost type/account
     trxid = dbo.query_int("SELECT ID FROM accountstrx WHERE AnimalCostID = ?", [acid])
     if trxid != 0:
         asm3.al.debug("Already have an existing transaction, updating amount to %d" % c.COSTAMOUNT, "financial.update_matching_cost_transaction", dbo)
         dbo.update("accountstrx", trxid, { "Amount": c.COSTAMOUNT })
         return
 
-    # Get the target account for this type of cost, use the first expense account on file for that type
-    target = dbo.query_int("SELECT ID FROM accounts WHERE AccountType = ? AND CostTypeID = ? ORDER BY ID", (EXPENSE, c.COSTTYPEID))
+    # Get the target account for this type of cost
+    target = dbo.query_int("SELECT AccountID FROM costtype WHERE ID = ?", [c.COSTTYPEID])
     if target == 0:
         # This shouldn't happen, but we can't go ahead without an account
-        raise asm3.utils.ASMValidationError("No target account found for cost type, can't create trx")
+        asm3.al.error("No target account found for cost type, can't create trx", "financial.update_matching_cost_transaction", dbo)
+        return
 
     # Get the source account if we weren't given one
     source = destinationaccount
@@ -792,9 +849,9 @@ def update_matching_cost_transaction(dbo, username, acid, destinationaccount = 0
             asm3.al.debug("Got blank source, getting first bank account: %s" % source, "financial.update_matching_cost_transaction", dbo)
             if source == 0:
                 # Shouldn't happen, but we have no bank accounts on file
-                asm3.al.error("No source available for trx. Bailing.", "financial.update_matching_cost_transaction", dbo)
-                raise asm3.utils.ASMValidationError("No bank accounts on file, can't set target for cost trx")
-        # Has a mapping been created by the user for this donation type
+                asm3.al.error("No bank accounts on file, can't set target for cost trx", "financial.update_matching_cost_transaction", dbo)
+                return
+        # Has a mapping been created by the user for this cost type
         # to a destination other than the default?
         # TODO: If requested in future possibly, not present right now
         # maps = asm3.configuration.cost_account_mappings(dbo)
@@ -828,9 +885,10 @@ def update_matching_cost_transaction(dbo, username, acid, destinationaccount = 0
 
 def update_matching_donation_transaction(dbo, username, odid, destinationaccount = 0):
     """
-    Creates a matching account transaction for a donation or updates
+    Creates a matching account transaction for a donation/payment or updates
     an existing trx if it already exists
     """
+    l = dbo.locale
     # Don't do anything if we aren't creating matching transactions
     if not asm3.configuration.create_donation_trx(dbo): 
         asm3.al.debug("Create donation trx is off, not creating trx.", "financial.update_matching_donation_transaction", dbo)
@@ -850,18 +908,22 @@ def update_matching_donation_transaction(dbo, username, odid, destinationaccount
 
     # Do we already have an existing transaction for this donation?
     # If we do, we only need to check the amounts as it's now the
-    # users problem if they picked the wrong donationtype/account
-    trxid = dbo.query_int("SELECT ID FROM accountstrx WHERE OwnerDonationID = ?", [odid])
+    # users problem if they picked the wrong donationtype/account.
+    # NOTE: Deliberately choose the first because if a transaction for
+    # any handling fee was created, it will have a higher ID while
+    # still having the same ownerdonation.ID for display/report purposes.
+    trxid = dbo.query_int("SELECT ID FROM accountstrx WHERE OwnerDonationID = ? ORDER BY ID", [odid])
     if trxid != 0:
-        asm3.al.debug("Already have an existing transaction, updating amount to %d" % d["DONATION"], "financial.update_matching_donation_transaction", dbo)
-        dbo.execute("UPDATE accountstrx SET Amount = ? WHERE ID = ?", (d.DONATION, trxid))
+        asm3.al.debug("Already have an existing transaction, updating amount to %d" % abs(d.DONATION), "financial.update_matching_donation_transaction", dbo)
+        dbo.execute("UPDATE accountstrx SET Amount = ? WHERE ID = ?", (abs(d.DONATION), trxid))
         return
 
-    # Get the source account for this type of donation, use the first income account on file for that type
-    source = dbo.query_int("SELECT ID FROM accounts WHERE AccountType = ? AND DonationTypeID = ? ORDER BY ID", (INCOME, d.DONATIONTYPEID))
+    # Get the source account for this type of donation
+    source = dbo.query_int("SELECT AccountID FROM donationtype WHERE ID = ?", [d.DONATIONTYPEID])
     if source == 0:
         # This shouldn't happen, but we can't go ahead without an account
-        raise asm3.utils.ASMValidationError("No source account found for donation type, can't create trx")
+        asm3.al.error("No source account found for donation type, can't create trx", "financial.update_matching_donation_transaction", dbo)
+        return
 
     # Get the target account if we weren't given one
     target = destinationaccount
@@ -875,7 +937,8 @@ def update_matching_donation_transaction(dbo, username, odid, destinationaccount
             if target == 0:
                 # Shouldn't happen, but we have no bank accounts on file
                 asm3.al.error("No target available for trx. Bailing.", "financial.update_matching_donation_transaction", dbo)
-                raise asm3.utils.ASMValidationError("No bank accounts on file, can't set target for donation trx")
+                return
+
         # Has a mapping been created by the user for this donation type
         # to a destination other than the default?
         maps = asm3.configuration.donation_account_mappings(dbo)
@@ -887,13 +950,20 @@ def update_matching_donation_transaction(dbo, username, odid, destinationaccount
                 target = asm3.configuration.donation_target_account(dbo)
 
     # Is the donation for a negative amount? If so, flip the accounts
-    # round as this is a refund donation and make the amount positive.
+    # round as this is a refund and make the amount positive.
     amount = d.DONATION
+    isrefund = False
     if amount < 0:
         oldtarget = target
         target = source
         source = oldtarget
         amount = abs(amount)
+        isrefund = True
+
+    # Is there a tax portion? If so, remove it from the amount before creating
+    # the transaction as we're going to do a separate transaction for the tax
+    if d.VATAMOUNT > 0 and not isrefund:
+        amount -= d.VATAMOUNT
 
     # Create the transaction
     tid = dbo.insert("accountstrx", {
@@ -906,9 +976,45 @@ def update_matching_donation_transaction(dbo, username, odid, destinationaccount
         "AnimalCostID":         0,
         "OwnerDonationID":      odid
     }, username)
-    asm3.al.debug("Trx created with ID %d" % int(tid), "financial.update_matching_cost_transaction", dbo)
+    asm3.al.debug("Trx created with ID %d" % int(tid), "financial.update_matching_donation_transaction", dbo)
 
-def insert_account_from_costtype(dbo, ctid, name, desc):
+    # Is there a vat/tax portion of this payment that we need to create a transaction for?
+    if d.VATAMOUNT and d.VATAMOUNT > 0 and not isrefund:
+        vatac = asm3.configuration.donation_vat_account(dbo)
+        if 0 == dbo.query_int("SELECT ID FROM accounts WHERE ID = ?", [vatac]):
+            vatac = dbo.query_int("SELECT ID FROM accounts WHERE AccountType=? ORDER BY ID", [INCOME])
+            asm3.al.error("No vat account configured, falling back to first income ac %s" % vatac, "financial.update_matching_donation_transaction", dbo)
+        tid = dbo.insert("accountstrx", {
+            "TrxDate":              d.DATE,
+            "Description":          asm3.i18n._("Sales Tax", l),
+            "Reconciled":           0,
+            "Amount":               d.VATAMOUNT,
+            "SourceAccountID":      vatac,
+            "DestinationAccountID": target,
+            "AnimalCostID":         0,
+            "OwnerDonationID":      odid
+        }, username)
+        asm3.al.debug("VAT trx created with ID %d" % int(tid), "financial.update_matching_donation_transaction", dbo)
+
+    # Is there a fee on this payment that we need to create a transaction for?
+    if d.FEE and d.FEE > 0 and not isrefund:
+        feeac = asm3.configuration.donation_fee_account(dbo)
+        if 0 == dbo.query_int("SELECT ID FROM accounts WHERE ID = ?", [feeac]):
+            feeac = dbo.query_int("SELECT ID FROM accounts WHERE AccountType=? ORDER BY ID", [EXPENSE])
+            asm3.al.error("No expense account configured, falling back to first expense ac %s" % feeac, "financial.update_matching_donation_transaction", dbo)
+        tid = dbo.insert("accountstrx", {
+            "TrxDate":              d.DATE,
+            "Description":          asm3.i18n._("Transaction Fee", l),
+            "Reconciled":           0,
+            "Amount":               d.FEE,
+            "SourceAccountID":      target,
+            "DestinationAccountID": feeac,
+            "AnimalCostID":         0,
+            "OwnerDonationID":      odid
+        }, username)
+        asm3.al.debug("Fee trx created with ID %d" % int(tid), "financial.update_matching_donation_transaction", dbo)
+
+def insert_account_from_costtype(dbo, name, desc):
     """
     Creates an account from a donation type record
     """
@@ -918,12 +1024,12 @@ def insert_account_from_costtype(dbo, ctid, name, desc):
         "Code":             acode,
         "Archived":         0,
         "AccountType":      EXPENSE,
-        "DonationTypeID":   0,
-        "CostTypeID":       ctid,
-        "Description":      desc
+        "Description":      desc,
+        "DonationTypeID":   0, # ASM2_COMPATIBILITY
+        "CostTypeID":       0 # ASM2_COMPATIBILITY
     }, "system")
 
-def insert_account_from_donationtype(dbo, dtid, name, desc):
+def insert_account_from_donationtype(dbo, name, desc):
     """
     Creates an account from a donation type record
     """
@@ -933,9 +1039,9 @@ def insert_account_from_donationtype(dbo, dtid, name, desc):
         "Code":             acode,
         "Archived":         0,
         "AccountType":      INCOME,
-        "DonationTypeID":   dtid,
-        "CostTypeID":       0,
-        "Description":      desc
+        "Description":      desc,
+        "DonationTypeID":   0, # ASM2_COMPATIBILITY
+        "CostTypeID":       0 # ASM2_COMPATIBILITY
     }, "system")
 
 def insert_account_roles(dbo, username, accountid, post):
@@ -982,9 +1088,9 @@ def insert_account_from_form(dbo, username, post):
         "Code":             post["code"],
         "Archived":         post.integer("archived"),
         "AccountType":      post.integer("type"),
-        "DonationTypeID":   post.integer("donationtype"),
-        "CostTypeID":       post.integer("costtype"),
-        "Description":      post["description"]
+        "Description":      post["description"],
+        "DonationTypeID":   0, # ASM2_COMPATIBILITY
+        "CostTypeID":       0 # ASM2_COMPATIBILITY
     }, username)
 
     insert_account_roles(dbo, username, accountid, post)
@@ -1007,8 +1113,6 @@ def update_account_from_form(dbo, username, post):
         "Code":             post["code"],
         "AccountType":      post.integer("type"),
         "Archived":         post.integer("archived"),
-        "DonationTypeID":   post.integer("donationtype"),
-        "CostTypeID":       post.integer("costtype"),
         "Description":      post["description"]
     }, username)
 
@@ -1104,10 +1208,13 @@ def insert_voucher_from_form(dbo, username, post):
     Creates a voucher record from posted form data 
     """
     return dbo.insert("ownervoucher", {
-        "OwnerID":      post.integer("personid"),
+        "AnimalID":     post.integer("animal"),
+        "OwnerID":      post.integer("person"),
         "VoucherID":    post.integer("type"),
+        "VoucherCode":  post["vouchercode"],
         "DateIssued":   post.date("issued"),
         "DateExpired":  post.date("expires"),
+        "DatePresented": post.date("presented"),
         "Value":        post.integer("amount"),
         "Comments":     post["comments"]
     }, username)
@@ -1117,9 +1224,13 @@ def update_voucher_from_form(dbo, username, post):
     Updates a voucher record from posted form data
     """
     dbo.update("ownervoucher", post.integer("voucherid"), {
+        "AnimalID":      post.integer("animal"),
+        "OwnerID":      post.integer("person"),
         "VoucherID":    post.integer("type"),
+        "VoucherCode":  post["vouchercode"],
         "DateIssued":   post.date("issued"),
         "DateExpired":  post.date("expires"),
+        "DatePresented": post.date("presented"),
         "Value":        post.integer("amount"),
         "Comments":     post["comments"]
     }, username)
@@ -1213,6 +1324,19 @@ def delete_licence(dbo, username, lid):
     """
     dbo.delete("ownerlicence", lid, username)
 
+def get_payment_processor(dbo, name):
+    """
+    Returns a new payment processor object for name
+    """
+    if name == "paypal": 
+        return asm3.paymentprocessor.paypal.PayPal(dbo)
+    elif name == "stripe":
+        return asm3.paymentprocessor.stripeh.Stripe(dbo)
+    elif name == "cardcom":
+        return asm3.paymentprocessor.cardcom.Cardcom(dbo)
+    else:
+        raise KeyError("No payment processor available for '%s'" % name)
+
 def giftaid_spreadsheet(dbo, path, fromdate, todate):
     """
     Generates an HMRC giftaid spreadsheet in their ODS format. The template
@@ -1263,8 +1387,8 @@ def giftaid_spreadsheet(dbo, path, fromdate, todate):
                 subearly = True
                 content = content.replace("table:style-name=\"ce21\" office:value-type=\"string\">", 
                     "table:style-name=\"ce36\" office:value-type=\"date\" office:date-value=\"%s\">" % \
-                    asm3.i18n.format_date("%Y-%m-%d", d.DONATIONDATE))
-                content = content.replace("DONEARLIESTDONATION", asm3.i18n.format_date("%d/%m/%y", d.DONATIONDATE))
+                    asm3.i18n.format_date(d.DONATIONDATE, "%Y-%m-%d" ))
+                content = content.replace("DONEARLIESTDONATION", asm3.i18n.format_date(d.DONATIONDATE, "%d/%m/%y"))
             content = content.replace("DONTITLE", xmlescape(d.OWNERTITLE), 1)
             content = content.replace("DONFIRSTNAME", xmlescape(d.OWNERFORENAMES), 1)
             content = content.replace("DONLASTNAME", xmlescape(d.OWNERSURNAME), 1)
@@ -1275,8 +1399,8 @@ def giftaid_spreadsheet(dbo, path, fromdate, todate):
             # Switch the string date format to a real date with the correct value
             content = content.replace("table:style-name=\"ce36\" office:value-type=\"string\">", 
                 "table:style-name=\"ce36\" office:value-type=\"date\" office:date-value=\"%s\">" % \
-                asm3.i18n.format_date("%Y-%m-%d", d["DONATIONDATE"]), 1)
-            content = content.replace("DONDATE", asm3.i18n.format_date("%d/%m/%y", d.DONATIONDATE), 1)
+                asm3.i18n.format_date(d.DONATIONDATE, "%Y-%m-%d"), 1)
+            content = content.replace("DONDATE", asm3.i18n.format_date(d.DONATIONDATE, "%d/%m/%y"), 1)
             donamt = str(float(d.DONATIONAMOUNT) / 100)
             dontotal += float(d.DONATIONAMOUNT) / 100
             content = content.replace("<text:p>54,321.00</text:p>", "<text:p>" + donamt + "</text:p>", 1)

@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, tableform, validate */
 
 $(function() {
 
-    var batch = {
+    "use strict";
+
+    const batch = {
 
         render: function() {
             return [
@@ -18,11 +19,14 @@ $(function() {
                 '<option value="genshelterpos">' + _("Recalculate on-shelter animal locations") + '</option>',
                 '<option value="genallpos">' + _("Recalculate ALL animal locations") + '</option>',
                 '<option value="genallvariable">' + _("Recalculate ALL animal ages/times") + '</option>',
+                '<option value="gendiarylinkinfo">' + _("Regenerate diary link info for incomplete notes") + '</option>',
                 '<option value="genlookingfor">' + _("Regenerate 'Person looking for' report") + '</option>',
                 '<option value="genownername">' + _("Regenerate person names in selected format") + '</option>',
+                '<option value="genownerflags">' + _("Regenerate person flags column") + '</option>',
                 '<option value="genlostfound">' + _("Regenerate 'Match lost and found animals' report") + '</option>',
                 '<option value="genfigyear">' + _("Regenerate annual animal figures for") + '</option>',
                 '<option value="genfigmonth">' + _("Regenerate monthly animal figures for") + '</option>',
+                '<option value="resetnnncodes">' + _("Reset NNN animal code counts for this year") + '</option>',
                 '</select>',
                 '<input id="taskdate" class="asm-textbox asm-datebox" style="display: none" />',
                 '<button id="button-go">' + _("Go") + '</button>',
@@ -33,20 +37,18 @@ $(function() {
             ].join("\n");
         },
 
-        runmode: function(btn, formdata) {
-            common.ajax_post("batch", formdata)
-                .then(function() {
-                    common.route("task");
-                });
+        runmode: async function(btn, formdata) {
+            await common.ajax_post("batch", formdata);
+            common.route("task");
         },
 
         bind: function() {
             $("#button-go").button().click(function() {
-                var task = $("#task").val(), taskdate = $("#taskdate").val();
+                let task = $("#task").val(), taskdate = $("#taskdate").val();
                 batch.runmode( task, "mode=" + task + "&taskdate=" + taskdate );
             });
             $("#task").change(function() {
-                var task = $("#task").val();
+                let task = $("#task").val();
                 $("#taskdate").toggle(task == "genfigyear" || task == "genfigmonth");
             });
         },

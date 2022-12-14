@@ -1,0 +1,62 @@
+Outcomes by Color
+###
+Movements
+###
+Any rev03
+###
+Outcome totals for animals leaving between two dates, broken down by species and color
+###
+en
+###
+$VAR from DATE Left between $
+$VAR to DATE and $
+
+SELECT
+a.ID, sp.SpeciesName, bc.BaseColour, mt.MovementType AS OutcomeName
+FROM adoption m
+INNER JOIN lksmovementtype mt ON mt.ID = m.MovementType
+INNER JOIN animal a ON a.ID = m.AnimalID
+LEFT OUTER JOIN entryreason er ON er.ID = a.EntryReasonID
+LEFT OUTER JOIN basecolour bc ON bc.ID = a.BaseColourID
+LEFT OUTER JOIN animaltype tp ON tp.ID = a.AnimalTypeID
+LEFT OUTER JOIN species sp ON sp.ID = a.SpeciesID
+WHERE m.MovementDate >= '$@from$' AND m.MovementDate <= '$@to$'
+
+UNION SELECT
+a.ID, sp.SpeciesName, bc.BaseColour,
+CASE WHEN PutToSleep = 0 THEN 'Died' ELSE 'Euthanasia' END AS OutcomeName
+FROM animal a
+LEFT OUTER JOIN entryreason er ON er.ID = a.EntryReasonID
+LEFT OUTER JOIN basecolour bc ON bc.ID = a.BaseColourID
+LEFT OUTER JOIN animaltype tp ON tp.ID = a.AnimalTypeID
+LEFT OUTER JOIN species sp ON sp.ID = a.SpeciesID
+WHERE a.DeceasedDate >= '$@from$' AND a.DeceasedDate <= '$@to$' AND a.DiedOffShelter = 0
+
+ORDER BY SpeciesName, BaseColour, OutcomeName
+###
+$$HEADER
+HEADER$$
+
+$$GROUP_SpeciesName
+$$HEAD
+$$FOOT
+<h2>$SpeciesName: {COUNT.SpeciesName}</h2>
+GROUP$$
+
+$$GROUP_BaseColour
+$$HEAD
+$$FOOT
+<h3>$BaseColour: {COUNT.BreedName}</h3>
+GROUP$$
+
+$$GROUP_OutcomeName
+$$HEAD
+$$FOOT
+<p>$BaseColour $OutcomeName: {COUNT.OutcomeName}</p>
+GROUP$$
+
+$$BODY
+BODY$$
+
+$$FOOTER
+FOOTER$$

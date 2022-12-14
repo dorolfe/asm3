@@ -1,18 +1,19 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
-/*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, edit_header, format, header, html, tableform, validate */
+/*global $, jQuery, _, asm, additional, common, config, controller, dlgfx, edit_header, format, header, html, microchip, tableform, validate */
 
 $(function() {
 
-    var lostfound = {
+    "use strict";
+
+    const lostfound = {
 
         current_person: null,
         mode: "lost",
 
         render: function() {
-            var mode = controller.name.indexOf("lost") != -1 ? "lost" : "found";
+            let mode = controller.name.indexOf("lost") != -1 ? "lost" : "found";
             this.mode = mode;
             return [
-                '<div id="emailform" />',
+                '<div id="emailform"></div>',
                 '<div id="button-document-body" class="asm-menu-body">',
                 '<ul class="asm-menu-list">',
                 edit_header.template_list(controller.templates, ( mode == "lost" ? "LOSTANIMAL" : "FOUNDANIMAL" ), controller.animal.ID),
@@ -35,8 +36,8 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left column -->',
-                '<td>',
+                // left column
+                '<td class="asm-nested-table-td">',
                 '<table width="100%">',
                 '<tr>',
                 '<td>' + _("Number") + '</td>',
@@ -116,8 +117,8 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<!-- right column -->',
-                '<td>',
+                // right column
+                '<td class="asm-nested-table-td">',
                 mode == "lost" ? '<table width="100%" class="additionaltarget" data="to10">' : "",
                 mode == "found" ? '<table width="100%" class="additionaltarget" data="to12">' : "",
                 '<tr>',
@@ -130,6 +131,12 @@ $(function() {
                 mode == "found" ? '<label for="returntoownerdate">' + _("Returned") + '</label></td>' : "",
                 mode == "lost" ? '<td><input type="text" id="datefound" data-json="DATEFOUND" data-post="datefound" class="asm-textbox asm-datebox" title="' + html.title(_("The date this animal was found")) + '" />' : "",
                 mode == "found" ? '<td><input type="text" id="returntoownerdate" data-json="RETURNTOOWNERDATE" data-post="returntoownerdate" class="asm-textbox asm-datebox" title="' + html.title(_("The date this animal was returned to its owner")) + '" />' : "",
+                '</td>',
+                '</tr>',
+                '<tr>',
+                '<td><label for="microchip">' + _("Microchip") + '</label></td>',
+                '<td><input id="microchip" data-json="MICROCHIPNUMBER" data-post="microchip" type="text" maxlength="15" class="asm-textbox" />',
+                ' <span id="microchipbrand"></span> <button id="button-microchipcheck">' + microchip.check_site_name() + '</button>',
                 '</td>',
                 '</tr>',
                 '<tr>',
@@ -164,11 +171,18 @@ $(function() {
 
             // Hide additional accordion section if there aren't
             // any additional fields declared
-            var ac = $("#asm-additional-accordion");
-            var an = ac.next();
+            let ac = $("#asm-additional-accordion");
+            let an = ac.next();
             if (an.find(".additional").length == 0) {
                 ac.hide(); an.hide();
             }
+
+            // Show the microchip manufacturer
+            microchip.manufacturer("#microchip", "#microchipbrand");
+
+            // Show the microchip check button
+            $("#button-microchipcheck").hide();
+            if (microchip.is_check_available($("#microchip").val())) { $("#button-microchipcheck").show(); }
 
             if (!common.has_permission("aa")) { $("#button-toanimal").hide(); }
             if (!common.has_permission("awl")) { $("#button-towaitinglist").hide(); }
@@ -191,28 +205,28 @@ $(function() {
             validate.reset();
 
             // owner
-            if ($.trim($("#owner").val()) == "") {
+            if (common.trim($("#owner").val()) == "") {
                 header.show_error(_("Lost and found entries must have a contact"));
                 validate.highlight("owner");
                 return false;
             }
 
             // date lost
-            if (lostfound.mode == "lost" && $.trim($("#datelost").val()) == "") {
+            if (lostfound.mode == "lost" && common.trim($("#datelost").val()) == "") {
                 header.show_error(_("Date lost cannot be blank"));
                 validate.highlight("datelost");
                 return false;
             }
 
             // date found
-            if (lostfound.mode == "found" && $.trim($("#datefound").val()) == "") {
+            if (lostfound.mode == "found" && common.trim($("#datefound").val()) == "") {
                 header.show_error(_("Date found cannot be blank"));
                 validate.highlight("datefound");
                 return false;
             }
 
             // date reported
-            if ($.trim($("#datereported").val()) == "") {
+            if (common.trim($("#datereported").val()) == "") {
                 header.show_error(_("Date reported cannot be blank"));
                 validate.highlight("datereported");
                 return false;
@@ -260,6 +274,9 @@ $(function() {
                 lostfound.current_person = rec;
             });
 
+            // Handlers for when on-screen fields are edited
+            $("#microchip").change(lostfound.enable_widgets);
+
             // Email dialog for sending emails
             $("#emailform").emailform();
 
@@ -272,7 +289,7 @@ $(function() {
             });
 
             $("#button-match").button().click(function() {
-                var qs = ( lostfound.mode == "lost" ? "lostanimalid=" : "foundanimalid=" ) + $("#lfid").val();
+                let qs = ( lostfound.mode == "lost" ? "lostanimalid=" : "foundanimalid=" ) + $("#lfid").val();
                 common.route("lostfound_match?" + qs);
             });
 
@@ -282,38 +299,36 @@ $(function() {
                     formdata: "mode=email&lfid=" + $("#lfid").val() + "&lfmode=" + lostfound.mode,
                     name: lostfound.current_person.OWNERFORENAMES + " " + lostfound.current_person.OWNERSURNAME,
                     email: lostfound.current_person.EMAILADDRESS,
-                    logtypes: controller.logtypes
+                    logtypes: controller.logtypes,
+                    personid: controller.animal.OWNERID,
+                    templates: controller.templatesemail
                 });
             });
 
-            $("#button-toanimal").button().click(function() {
+            $("#button-microchipcheck")
+                .button({ icons: { primary: "ui-icon-search" }, text: false })
+                .click(function() { microchip.check($("#microchip").val()); });
+
+            $("#button-toanimal").button().click(async function() {
                 $("#button-toanimal").button("disable");
-                var formdata = "mode=toanimal&id=" + $("#lfid").val();
-                common.ajax_post(controller.name, formdata)
-                    .then(function(result) { 
-                        common.route("animal?id=" + result); 
-                    });
+                let formdata = "mode=toanimal&id=" + $("#lfid").val();
+                let result = await common.ajax_post(controller.name, formdata);
+                common.route("animal?id=" + result); 
             });
 
-            $("#button-towaitinglist").button().click(function() {
+            $("#button-towaitinglist").button().click(async function() {
                 $("#button-towaitinglist").button("disable");
-                var formdata = "mode=towaitinglist&id=" + $("#lfid").val();
-                common.ajax_post(controller.name, formdata)
-                    .then(function(result) { 
-                        common.route("waitinglist?id=" + result); 
-                    });
+                let formdata = "mode=towaitinglist&id=" + $("#lfid").val();
+                let result = await common.ajax_post(controller.name, formdata);
+                common.route("waitinglist?id=" + result); 
             });
 
-            $("#button-delete").button().click(function() {
-                tableform.delete_dialog(null, _("This will permanently remove this record, are you sure?"))
-                    .then(function() {
-                        var formdata = "mode=delete&id=" + $("#lfid").val();
-                        return common.ajax_post(controller.name, formdata);
-                    })
-                    .then(function() { 
-                        $("#dialog-delete").dialog("close"); 
-                        common.route("main"); 
-                    });
+            $("#button-delete").button().click(async function() {
+                await tableform.delete_dialog(null, _("This will permanently remove this record, are you sure?"));
+                let formdata = "mode=delete&id=" + $("#lfid").val();
+                await common.ajax_post(controller.name, formdata);
+                $("#dialog-delete").dialog("close"); 
+                common.route("main"); 
             });
 
             $('#species').change(function() {
@@ -336,7 +351,7 @@ $(function() {
                     $(this).remove();
                 }
             });
-            if($('#breed option').size() == 0) {
+            if($('#breed option').length == 0) {
                 $('#breed').append("<option value='1'>"+$('#species option:selected').text()+"</option>");
             }
         },
@@ -358,6 +373,8 @@ $(function() {
 
             // Dirty handling
             validate.bind_dirty([ "lostanimal_", "foundanimal_" ]);
+            if (this.mode == "lost") { validate.indicator([ "datelost", "datereported", "owner" ]); }
+            if (this.mode == "found") { validate.indicator([ "datefound", "datereported", "owner" ]); }
         },
 
         destroy: function() {

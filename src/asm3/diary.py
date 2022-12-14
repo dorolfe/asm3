@@ -1,6 +1,7 @@
 
 import asm3.al
 import asm3.animal
+import asm3.asynctask
 import asm3.configuration
 import asm3.i18n
 import asm3.lostfound
@@ -47,16 +48,69 @@ def email_uncompleted_upto_today(dbo):
                 # Is this note relevant for this user?
                 if (n.diaryforname == "*") \
                 or (n.diaryforname == u.username) \
-                or (u.roles.find(n.diaryforname) != -1):
-                    s += asm3.i18n.python2display(l, n.diarydatetime) + " "
+                or (n.diaryforname in u.roles.split("|")):
+                    s += "%s %s - %s - " % (asm3.i18n.python2display(l, n.diarydatetime), asm3.i18n.format_time(n.diarydatetime), n.diaryforname)
                     s += n.subject
-                    if n.linkinfo is not None and n.linkinfo != "": s += " / " + n.linkinfo
-                    s += "\n" + n.note + "\n\n"
+                    if n.linkinfo is not None and n.linkinfo != "": s += " / %s" % n.linkinfo
+                    s += " (%s)" % n.createdby
+                    s += "\n%s\n\n%s" % (n.note, n.comments)
                     totalforuser += 1
             if totalforuser > 0:
                 asm3.al.debug("got %d notes for user %s" % (totalforuser, u.username), "diary.email_uncompleted_upto_today", dbo)
-                asm3.utils.send_email(dbo, asm3.configuration.email(dbo), u.emailaddress, "", "", 
-                    asm3.i18n._("Diary notes for: {0}", l).format(asm3.i18n.python2display(l, dbo.now())), s, exceptions=False)
+                subject = asm3.i18n._("Diary notes for: {0}", l).format(asm3.i18n.python2display(l, dbo.now()))
+                asm3.utils.send_email(dbo, asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s, exceptions=False, bulk=True)
+                if asm3.configuration.audit_on_send_email(dbo): 
+                    asm3.audit.email(dbo, "system", asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s)
+
+def email_note_on_change(dbo, n, username):
+    """
+    Emails the recipients of a diary note n with the note content
+    username the user triggering the send by adding/updating a diary
+    """
+    if not asm3.configuration.email_diary_on_change(dbo): return
+    if n is None: return
+    l = dbo.locale
+    allusers = asm3.users.get_users(dbo)
+    s = asm3.i18n._("Diary change triggered by {0} on {1}", l).format(username, asm3.i18n.python2display(l, dbo.now()))
+    s += "\n\n%s %s - %s - " % (asm3.i18n.python2display(l, n.diarydatetime), asm3.i18n.format_time(n.diarydatetime), n.diaryforname)
+    s += n.subject
+    if n.linkinfo is not None and n.linkinfo != "": s += " / %s" % n.linkinfo
+    s += "\n%s\n\n%s" % (n.note, n.comments)
+    for u in allusers:
+        if u.emailaddress and u.emailaddress.strip() != "":
+            # Is this note relevant for this user?
+            if (n.diaryforname == "*") \
+            or (n.diaryforname == u.username) \
+            or (n.diaryforname in u.roles.split("|")):
+                # Yes, send it to them
+                subject = asm3.i18n._("Diary update: {0}", l).format(n.subject)
+                asm3.utils.send_email(dbo, asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s, exceptions=False, bulk=True)
+                if asm3.configuration.audit_on_send_email(dbo): 
+                    asm3.audit.email(dbo, username, asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s)
+
+def email_note_on_complete(dbo, n, username):
+    """
+    Emails the creator of a diary note n with the note's content 
+    username the user triggering the send by completing a diary
+    """
+    if not asm3.configuration.email_diary_on_complete(dbo): return
+    if n is None: return
+    l = dbo.locale
+    allusers = asm3.users.get_users(dbo)
+    s = asm3.i18n._("Diary completion triggered by {0} on {1}", l).format(username, asm3.i18n.python2display(l, dbo.now()))
+    s += "\n\n%s %s - %s - " % (asm3.i18n.python2display(l, n.diarydatetime), asm3.i18n.format_time(n.diarydatetime), n.diaryforname)
+    s += n.subject
+    if n.linkinfo is not None and n.linkinfo != "": s += " / %s" % n.linkinfo
+    s += "\n%s\n\n%s" % (n.note, n.comments)
+    for u in allusers:
+        if u.emailaddress and u.emailaddress.strip() != "":
+            # Is this note relevant for this user?
+            if (n.createdby == u.username):
+                # Yes, send it to them
+                subject = asm3.i18n._("Diary complete: {0}", l).format(n.subject)
+                asm3.utils.send_email(dbo, asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s, exceptions=False, bulk=True)
+                if asm3.configuration.audit_on_send_email(dbo): 
+                    asm3.audit.email(dbo, username, asm3.configuration.email(dbo), u.emailaddress, "", "", subject, s)
 
 def user_role_where_clause(dbo, user = "", includecreatedby = True):
     """
@@ -69,7 +123,7 @@ def user_role_where_clause(dbo, user = "", includecreatedby = True):
     roles = asm3.users.get_roles_for_user(dbo, user)
     createdby = ""
     if includecreatedby: createdby = "OR CreatedBy = %s" % dbo.sql_value(user)
-    if len(roles) == 0: return "DiaryForName = %s %s" % (dbo.sql_value(user), createdby)
+    if len(roles) == 0: return "(DiaryForName = %s %s)" % (dbo.sql_value(user), createdby)
     sroles = []
     for r in roles:
         sroles.append(dbo.sql_value(r))
@@ -82,25 +136,24 @@ def get_between_two_dates(dbo, user, start, end):
     start: Start date
     end: End date
     """
-    sixmonths = dbo.today(offset = -182)
-    if start < sixmonths: start = sixmonths
     return dbo.query("SELECT d.*, cast(DiaryDateTime AS time) AS DiaryTime " \
         "FROM diary d WHERE %s " \
         "AND DateCompleted Is Null AND DiaryDateTime >= ? AND DiaryDateTime <= ? " \
         "ORDER BY DiaryDateTime DESC" % user_role_where_clause(dbo, user), (start, end))
 
-def get_uncompleted_upto_today(dbo, user = "", includecreatedby = True):
+def get_uncompleted_upto_today(dbo, user = "", includecreatedby = True, offset=-99999):
     """
     Gets a list of uncompleted diary notes upto and including
     today for the user supplied (or all users if no user passed)
     LINKID, LINKTYPE, DIARYDATETIME, DIARYFORNAME, SUBJECT, NOTE, LINKINFO
+    offset: A negative day value to go back (eg: -182 = stop at 6 months)
     """
-    sixmonths = dbo.today(offset = -182)
+    cutoff = dbo.today(offset = offset)
     alltoday = dbo.today(settime = "23:59:59")
     return dbo.query("SELECT d.*, cast(DiaryDateTime AS time) AS DiaryTime " \
         "FROM diary d WHERE %s " \
         "AND d.DateCompleted Is Null AND d.DiaryDateTime <= ? AND d.DiaryDateTime >= ? " \
-        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user, includecreatedby), ( alltoday, sixmonths ))
+        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user, includecreatedby), ( alltoday, cutoff ))
 
 def get_completed_upto_today(dbo, user = ""):
     """
@@ -108,11 +161,11 @@ def get_completed_upto_today(dbo, user = ""):
     today for the user supplied (or all users if no user passed)
     LINKID, LINKTYPE, DIARYDATETIME, DIARYFORNAME, SUBJECT, NOTE, LINKINFO
     """
-    sixmonths = dbo.today(offset = -182)
+    cutoff = dbo.today(offset = -99999)
     return dbo.query("SELECT d.*, cast(DiaryDateTime AS time) AS DiaryTime " \
         "FROM diary d WHERE %s " \
         "AND d.DateCompleted Is Not Null AND d.DiaryDateTime <= ? AND d.DiaryDateTime >= ? " \
-        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user), ( dbo.now(), sixmonths ))
+        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user), ( dbo.now(), cutoff ))
 
 def get_all_upto_today(dbo, user = ""):
     """f
@@ -120,11 +173,11 @@ def get_all_upto_today(dbo, user = ""):
     today for the user supplied (or all users if no user passed)
     LINKID, LINKTYPE, DIARYDATETIME, DIARYFORNAME, SUBJECT, NOTE, LINKINFO
     """
-    sixmonths = dbo.today(offset = -182)
+    cutoff = dbo.today(offset = -99999)
     return dbo.query("SELECT d.*, cast(DiaryDateTime AS time) AS DiaryTime " \
         "FROM diary d WHERE %s " \
         "AND d.DiaryDateTime <= ? AND d.DiaryDateTime >= ? " \
-        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user), ( dbo.now(), sixmonths ))
+        "ORDER BY d.DiaryDateTime DESC" % user_role_where_clause(dbo, user), ( dbo.now(), cutoff ))
 
 def get_future(dbo, user = ""):
     """
@@ -144,6 +197,7 @@ def complete_diary_note(dbo, username, diaryid):
     dbo.update("diary", diaryid, {
         "DateCompleted": dbo.today()
     }, username)
+    email_note_on_complete(dbo, get_diary(dbo, diaryid), username)
 
 def complete_diary_notes_for_animal(dbo, username, animalid):
     """
@@ -152,6 +206,8 @@ def complete_diary_notes_for_animal(dbo, username, animalid):
     dbo.update("diary", "LinkType=%d AND LinkID=%d" % (ANIMAL, animalid), {
         "DateCompleted": dbo.today()
     }, username)
+    for n in dbo.query("SELECT ID FROM diary WHERE LinkType=%d AND LinkID=%d" % (ANIMAL, animalid)):
+        email_note_on_complete(dbo, get_diary(dbo, n.id), username)
 
 def rediarise_diary_note(dbo, username, diaryid, newdate):
     """
@@ -160,6 +216,7 @@ def rediarise_diary_note(dbo, username, diaryid, newdate):
     dbo.update("diary", diaryid, {
         "DiaryDateTime": newdate
     }, username)
+    email_note_on_change(dbo, get_diary(dbo, diaryid), username)
 
 def get_animal_tasks(dbo):
     """
@@ -210,7 +267,7 @@ def get_diary(dbo, diaryid):
     """
     Returns a diary record
     """
-    return dbo.query("SELECT * FROM diary WHERE ID = ?", [diaryid])[0]
+    return dbo.first_row(dbo.query("SELECT * FROM diary WHERE ID = ?", [diaryid]))
 
 def delete_diary(dbo, username, diaryid):
     """
@@ -234,6 +291,9 @@ def get_link_info(dbo, linktypeid, linkid):
     if linktypeid == ANIMAL:
         return "%s [%s]" % (asm3.animal.get_animal_namecode(dbo, linkid), asm3.animal.get_display_location_noq(dbo, linkid))
 
+    elif linktypeid == ANIMALCONTROL:
+        return asm3.i18n._("Incident: {0}").format(asm3.animalcontrol.get_animalcontrol_numbertype(dbo, linkid))
+
     elif linktypeid == PERSON:
         return asm3.person.get_person_name(dbo, linkid)
 
@@ -245,6 +305,25 @@ def get_link_info(dbo, linktypeid, linkid):
 
     elif linktypeid == WAITINGLIST:
         return asm3.i18n._("Waiting List: {0}", l).format(asm3.waitinglist.get_person_name(dbo, linkid))
+
+def update_link_info(dbo, username, linktypeid, linkid):
+    """
+    Updates all diary notes of linktypeid/linkid
+    """
+    dbo.update("diary", f"LinkType={linktypeid} AND LinkID={linkid}", {
+        "LinkInfo":     get_link_info(dbo, linktypeid, linkid)
+    }, username)
+
+def update_link_info_incomplete(dbo):
+    """
+    Updates the link info of all incomplete diary notes
+    """
+    rows = dbo.query("SELECT DISTINCT LinkType, LinkID FROM diary WHERE DateCompleted Is Null")
+    asm3.asynctask.set_progress_max(dbo, len(rows))
+    for d in rows:
+        update_link_info(dbo, "system", d.LINKTYPE, d.LINKID)
+        asm3.asynctask.increment_progress_value(dbo)
+    asm3.al.info(f"updated {len(rows)} diary link info elements", "diary.update_link_info_incomplete", dbo)
 
 def insert_diary_from_form(dbo, username, linktypeid, linkid, post):
     """
@@ -260,8 +339,6 @@ def insert_diary_from_form(dbo, username, linktypeid, linkid, post):
         raise asm3.utils.ASMValidationError(asm3.i18n._("Diary date is not valid", l))
     if post["subject"] == "":
         raise asm3.utils.ASMValidationError(asm3.i18n._("Diary subject cannot be blank", l))
-    if post["note"] == "":
-        raise asm3.utils.ASMValidationError(asm3.i18n._("Diary note cannot be blank", l))
     diarytime = post["diarytime"].strip()
     if diarytime != "":
         if diarytime.find(":") == -1:
@@ -271,7 +348,7 @@ def insert_diary_from_form(dbo, username, linktypeid, linkid, post):
 
     linkinfo = get_link_info(dbo, linktypeid, linkid)
 
-    return dbo.insert("diary", {
+    diaryid = dbo.insert("diary", {
         "LinkID":           linkid,
         "LinkType":         linktypeid,
         "LinkInfo":         linkinfo,
@@ -282,6 +359,9 @@ def insert_diary_from_form(dbo, username, linktypeid, linkid, post):
         "Comments":         post["comments"],
         "DateCompleted":    post.date("completed")
     }, username)
+
+    email_note_on_change(dbo, get_diary(dbo, diaryid), username)
+    return diaryid
 
 def insert_diary(dbo, username, linktypeid, linkid, diarydate, diaryfor, subject, note):
     """
@@ -296,7 +376,7 @@ def insert_diary(dbo, username, linktypeid, linkid, diarydate, diaryfor, subject
     if linkid != 0:
         linkinfo = get_link_info(dbo, linktypeid, linkid)
 
-    return dbo.insert("diary", {
+    diaryid = dbo.insert("diary", {
         "LinkID":           linkid,
         "LinkType":         linktypeid,
         "LinkInfo":         linkinfo,
@@ -305,6 +385,9 @@ def insert_diary(dbo, username, linktypeid, linkid, diarydate, diaryfor, subject
         "Subject":          subject,
         "Note":             note
     }, username)
+
+    email_note_on_change(dbo, get_diary(dbo, diaryid), username)
+    return diaryid
 
 def update_diary_from_form(dbo, username, post):
     """
@@ -317,8 +400,6 @@ def update_diary_from_form(dbo, username, post):
         raise asm3.utils.ASMValidationError(asm3.i18n._("Diary date is not valid", l))
     if post["subject"] == "":
         raise asm3.utils.ASMValidationError(asm3.i18n._("Diary subject cannot be blank", l))
-    if post["note"] == "":
-        raise asm3.utils.ASMValidationError(asm3.i18n._("Diary note cannot be blank", l))
     diarytime = post["diarytime"].strip()
     if diarytime != "":
         if diarytime.find(":") == -1:
@@ -335,6 +416,11 @@ def update_diary_from_form(dbo, username, post):
         "Comments":         post["comments"],
         "DateCompleted":    post.date("completed")
     }, username)
+
+    if post.date("completed") is None:
+        email_note_on_change(dbo, get_diary(dbo, diaryid), username)
+    else:
+        email_note_on_complete(dbo, get_diary(dbo, diaryid), username)
 
 def execute_diary_task(dbo, username, tasktype, taskid, linkid, selecteddate):
     """

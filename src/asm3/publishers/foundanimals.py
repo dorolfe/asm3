@@ -14,14 +14,14 @@ VALIDATE_FAIL = 2
 
 class FoundAnimalsPublisher(FTPPublisher):
     """
-    Handles publishing to foundanimals.org
+    Handles publishing to foundanimals (now 24pet/foundanimals)
     """
     def __init__(self, dbo, publishCriteria):
         publishCriteria.uploadDirectly = True
         publishCriteria.thumbnails = False
         FTPPublisher.__init__(self, dbo, publishCriteria, 
             FOUNDANIMALS_FTP_HOST, FOUNDANIMALS_FTP_USER, FOUNDANIMALS_FTP_PASSWORD)
-        self.initLog("foundanimals", "FoundAnimals Publisher")
+        self.initLog("foundanimals", "FoundAnimals/24Pet Publisher")
 
     def run(self):
         
@@ -32,18 +32,21 @@ class FoundAnimalsPublisher(FTPPublisher):
 
         org = asm3.configuration.organisation(self.dbo)
         folder = asm3.configuration.foundanimals_folder(self.dbo)
+        cutoffdays = asm3.configuration.foundanimals_cutoff_days(self.dbo)
+        if cutoffdays == 0: cutoffdays = -1095 # default cutoff is 3 years, note that it's a negative number
+
         if folder == "":
-            self.setLastError("No FoundAnimals folder has been set.")
+            self.setLastError("No FoundAnimals/24Pet folder has been set.")
             self.cleanup()
             return
         
         email = asm3.configuration.foundanimals_email(self.dbo)
         if email == "":
-            self.setLastError("No FoundAnimals group email has been set.")
+            self.setLastError("No FoundAnimals/24Pet group email has been set.")
             self.cleanup()
             return
 
-        animals = get_microchip_data(self.dbo, ["9", "0", "1", "4"], "foundanimals", allowintake=True, organisation_email=email)
+        animals = get_microchip_data(self.dbo, ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], "foundanimals", allowintake=True, organisation_email=email)
         if len(animals) == 0:
             self.setLastError("No animals found to publish.")
             self.cleanup(save_log=False)
@@ -51,17 +54,25 @@ class FoundAnimalsPublisher(FTPPublisher):
 
         if not self.openFTPSocket(): 
             self.setLastError("Failed to open FTP socket.")
-            if self.logSearch("530 Login") != -1:
-                self.log("Found 530 Login incorrect: disabling FoundAnimals publisher.")
-                asm3.configuration.publishers_enabled_disable(self.dbo, "fa")
+            # INFO: This makes no sense as the user is not in control of the FTP
+            # credentials to found. Their FTP service failed recently and as a 
+            # result all customers stopped sending to found
+            # if self.logSearch("530 Login") != -1:
+            #    self.log("Found 530 Login incorrect: disabling FoundAnimals publisher.")
+            #    asm3.configuration.publishers_enabled_disable(self.dbo, "fa")
             self.cleanup()
             return
 
         # foundanimals.org want data files called mmddyyyy_HHMMSS.csv in the shelter's own folder
-        dateportion = asm3.i18n.format_date("%m%d%Y_%H%M%S", asm3.i18n.now(self.dbo.timezone))
+        dateportion = asm3.i18n.format_date(asm3.i18n.now(self.dbo.timezone), "%m%d%Y_%H%M%S")
         outputfile = "%s.csv" % dateportion
+
+        folder = folder.strip() # Users frequently put spaces at the beginning when entering the folder name
         self.mkdir(folder)
-        self.chdir(folder)
+        if not self.chdir(folder, folder):
+            self.setLastError("Failed issuing chdir to '%s'" % folder)
+            self.cleanup()
+            return
 
         csv = []
 
@@ -81,7 +92,7 @@ class FoundAnimalsPublisher(FTPPublisher):
                     self.cleanup()
                     return
 
-                v = self.validate(an)
+                v = self.validate(an, cutoffdays)
                 if v == VALIDATE_NO: 
                     continue
                 elif v == VALIDATE_YES:
@@ -152,9 +163,9 @@ class FoundAnimalsPublisher(FTPPublisher):
         # Microchip Number
         line.append("\"%s\"" % an["IDENTICHIPNUMBER"])
         # Service Date
-        line.append("\"%s\"" % asm3.i18n.format_date("%m/%d/%Y", servicedate))
+        line.append("\"%s\"" % asm3.i18n.format_date(servicedate, "%m/%d/%Y"))
         # Date of Birth
-        line.append("\"%s\"" % asm3.i18n.format_date("%m/%d/%Y", an["DATEOFBIRTH"]))
+        line.append("\"%s\"" % asm3.i18n.format_date(an["DATEOFBIRTH"], "%m/%d/%Y"))
         # Species
         line.append("\"%s\"" % an["PETFINDERSPECIES"])
         # Sex
@@ -171,10 +182,13 @@ class FoundAnimalsPublisher(FTPPublisher):
         line.append("\"%s\"" % org)
         # Rescue Group Email
         line.append("\"%s\"" % email)
-        return ",".join(line)
+        return self.csvLine(line)
 
-    def validate(self, an):
-        """ Validate an animal record is ok to send """
+    def validate(self, an, cutoffdays):
+        """ Validate an animal record is ok to send.
+            an: The record
+            cutoffdays: Negative number of days to check against service date
+        """
         # Validate certain items aren't blank so we aren't registering bogus data
         if asm3.utils.nulltostr(an["CURRENTOWNERADDRESS"]).strip() == "":
             self.logError("Address for the new owner is blank, cannot process")
@@ -189,10 +203,14 @@ class FoundAnimalsPublisher(FTPPublisher):
             self.logError("Microchip length is not 9, 10 or 15, cannot process")
             return VALIDATE_NO
 
+        # If the action triggering this registration is older than our cutoff, 
+        # not only fail validation, but return a value of FAIL so that this record
+        # is marked with the error and we won't try again until something changes
+        # (prevents old records continually being checked)
         servicedate = an["ACTIVEMOVEMENTDATE"] or an["MOSTRECENTENTRYDATE"]
         if an["NONSHELTERANIMAL"] == 1: servicedate = an["IDENTICHIPDATE"]
-        if servicedate < self.dbo.today(offset=-365*3):
-            an["FAILMESSAGE"] = "Service date is older than 3 years, marking failed"
+        if servicedate < self.dbo.today(offset=cutoffdays):
+            an["FAILMESSAGE"] = "Service date is older than %s days, marking failed" % cutoffdays
             self.logError(an["FAILMESSAGE"])
             return VALIDATE_FAIL
 

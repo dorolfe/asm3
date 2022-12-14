@@ -2,7 +2,7 @@ Detailed Shelter Inventory (with units)
 ###
 Inventories
 ###
-33012/Any
+33012/Any rev01
 ###
 Detailed current shelter inventory, with breed and microchip details and location units.
 ###
@@ -18,7 +18,7 @@ a.TimeOnShelter,
 sx.Sex,
 t.AnimalType,
 s.SpeciesName,
-CASE WHEN a.ActiveMovementType = 2 THEN 'Foster' ELSE i.LocationName END AS LocationName,
+CASE WHEN a.ActiveMovementType = 2 THEN 'Foster' WHEN a.ActiveMovementType = 1 THEN 'Trial Adoption' WHEN a.ActiveMovementType = 8 THEN 'Retailer' ELSE i.LocationName END AS LocationName,
 a.ShelterLocationUnit
 FROM animal a
 LEFT OUTER JOIN animaltype t ON t.ID = a.AnimalTypeID
@@ -26,8 +26,7 @@ LEFT OUTER JOIN species s ON s.ID = a.SpeciesID
 LEFT OUTER JOIN lksex sx ON sx.ID = a.Sex
 LEFT OUTER JOIN internallocation i ON i.ID = a.ShelterLocation
 WHERE a.Archived = 0
-ORDER BY 
-CASE WHEN a.ActiveMovementType = 2 THEN 'Foster' ELSE i.LocationName END, a.ShelterLocationUnit
+ORDER BY LocationName, a.ShelterLocationUnit
 ###
 $$HEADER
 HEADER$$
@@ -39,8 +38,8 @@ $$HEAD
 <td><b>Unit</b></td>
 <td><b>Code</b></td>
 <td><b>Name</b></td>
-<td><b>Type</b></td>
 <td><b>Microchip</b></td>
+<td><b>Type</b></td>
 <td><b>Age</b></td>
 <td><b>Breed</b></td>
 <td><b>Sex</b></td>
@@ -57,8 +56,8 @@ $$BODY
 <td>$shelterlocationunit</td>
 <td>$sheltercode</td>
 <td>$animalname</td>
-<td>$animaltype</td>
 <td>$identichipnumber</td>
+<td>$animaltype</td>
 <td>$animalage</td>
 <td>$breedname</td>
 <td>$sex</td>

@@ -1,25 +1,27 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, tableform, validate */
 
 $(function() {
 
+    "use strict";
 
-    var medicalprofile = {
+    const medicalprofile = {
 
         model: function() {
-            var dialog = {
+            const dialog = {
                 add_title: _("Add medical profile"),
                 edit_title: _("Edit medical profile"),
                 edit_perm: 'mcam',
-                helper_text: _("Medical profiles need a profile name, treatment, dosage and frequencies."),
                 close_on_ok: true,
                 columns: 1,
                 width: 800,
                 fields: [
-                    { json_field: "PROFILENAME", post_field: "profilename", label: _("Profile"), type: "text", validation: "notblank" },
-                    { json_field: "TREATMENTNAME", post_field: "treatmentname", label: _("Name"), type: "text", validation: "notblank" },
-                    { json_field: "DOSAGE", post_field: "dosage", label: _("Dosage"), type: "text", validation: "notblank" },
-                    { json_field: "COST", post_field: "cost", label: _("Cost"), type: "currency" },
+                    { json_field: "PROFILENAME", post_field: "profilename", label: _("Profile"), type: "text", classes: "asm-doubletextbox", validation: "notblank" },
+                    { json_field: "TREATMENTNAME", post_field: "treatmentname", label: _("Name"), type: "text", classes: "asm-doubletextbox", validation: "notblank" },
+                    { json_field: "DOSAGE", post_field: "dosage", label: _("Dosage"), type: "text", classes: "asm-doubletextbox", validation: "notblank" },
+                    { json_field: "COST", post_field: "cost", label: _("Cost"), type: "currency",
+                        callout: _("The total cost of all treatments.") },
+                    { json_field: "COSTPERTREATMENT", post_field: "costpertreatment", label: _("Cost per Treatment"), type: "currency",
+                        callout: _("If this field has a value, the cost field above will be automatically calculated after each treatment is given.") },
                     { post_field: "singlemulti", label: _("Frequency"), type: "select",  
                         options: '<option value="0">' + _("Single Treatment") + '</option>' +
                         '<option value="1" selected="selected">' + _("Multiple Treatments") + '</option>' },
@@ -50,56 +52,57 @@ $(function() {
                 ]
             };
 
-            var table = {
+            const table = {
                 rows: controller.rows,
                 idcolumn: "ID",
-                edit: function(row) {
+                edit: async function(row) {
                     tableform.fields_populate_from_json(dialog.fields, row);
                     $("#singlemulti").select("value", (row.TOTALNUMBEROFTREATMENTS == 1 ? 0 : 1));
                     $("#treatmentrule").select("value", row.TREATMENTRULE);
                     medicalprofile.change_singlemulti();
                     medicalprofile.change_values();
-                    tableform.dialog_show_edit(dialog, row)
-                        .then(function() {
-                            tableform.fields_update_row(dialog.fields, row);
-                            medicalprofile.set_extra_fields(row);
-                            return tableform.fields_post(dialog.fields, "mode=update&profileid=" + row.ID, "medicalprofile");
-                        })
-                        .then(function(response) {
-                            tableform.table_update(table);
-                            tableform.dialog_close();
-                        })
-                        .fail(function() {
-                            tableform.dialog_enable_buttons();
-                        });
+                    try {
+                        await tableform.dialog_show_edit(dialog, row);
+                        tableform.fields_update_row(dialog.fields, row);
+                        medicalprofile.set_extra_fields(row);
+                        await tableform.fields_post(dialog.fields, "mode=update&profileid=" + row.ID, "medicalprofile");
+                        tableform.table_update(table);
+                        tableform.dialog_close();
+                    }
+                    catch(err) {
+                        log.error(err, err);
+                        tableform.dialog_enable_buttons();
+                    }
                 },
                 columns: [
-                    { field: "PROFILENAME", display: _("Name"), initialsort: true },
-                    { field: "TREATMENTNAME", display: _("Treatment") },
+                    { field: "PROFILENAME", display: _("Profile"), initialsort: true },
+                    { field: "TREATMENTNAME", display: _("Name") },
                     { field: "DOSAGE", display: _("Dosage") },
-                    { field: "COST", display: _("Cost"), formatter: tableform.format_currency },
+                    { field: "COST", display: _("Cost"), 
+                        formatter: function(row) {
+                            if (row.COSTPERTREATMENT) { return format.currency(row.COSTPERTREATMENT); }
+                            return format.currency(row.COST);
+                        },
+                        hideif: function() { return !config.bool("ShowCostAmount"); }
+                    },
                     { field: "NAMEDFREQUENCY", display: _("Frequency") },
                     { field: "COMMENTS", display: _("Comments"), formatter: tableform.format_comments }
                 ]
             };
 
-            var buttons = [
+            const buttons = [
                 { id: "new", text: _("New Profile"), icon: "new", enabled: "always", perm: "maam",
                      click: function() { medicalprofile.new_medicalprofile(); }},
-                 { id: "delete", text: _("Delete"), icon: "delete", enabled: "multi", perm: "mdam", 
-                     click: function() { 
-                         tableform.delete_dialog()
-                             .then(function() {
-                                 tableform.buttons_default_state(buttons);
-                                 var ids = tableform.table_ids(table);
-                                 return common.ajax_post("medicalprofile", "mode=delete&ids=" + ids);
-                             })
-                             .then(function() {
-                                 tableform.table_remove_selected_from_json(table, controller.rows);
-                                 tableform.table_update(table);
-                             });
-                     } 
-                 }
+                { id: "delete", text: _("Delete"), icon: "delete", enabled: "multi", perm: "mdam", 
+                    click: async function() { 
+                        await tableform.delete_dialog();
+                        tableform.buttons_default_state(buttons);
+                        var ids = tableform.table_ids(table);
+                        await common.ajax_post("medicalprofile", "mode=delete&ids=" + ids);
+                        tableform.table_remove_selected_from_json(table, controller.rows);
+                        tableform.table_update(table);
+                    } 
+                }
             ];
             this.dialog = dialog;
             this.buttons = buttons;
@@ -107,7 +110,7 @@ $(function() {
         },
 
         render: function() {
-            var s = "";
+            let s = "";
             this.model();
             s += tableform.dialog_render(this.dialog);
             s += html.content_header(_("Medical Profiles"));
@@ -117,18 +120,17 @@ $(function() {
             return s;
         },
 
-        new_medicalprofile: function() { 
+        new_medicalprofile: async function() { 
             $("#dialog-tableform .asm-textbox, #dialog-tableform .asm-textarea").val("");
-            tableform.dialog_show_add(medicalprofile.dialog)
-                .then(function() {
-                    return tableform.fields_post(medicalprofile.dialog.fields, "mode=create", "medicalprofile");
-                })
-                .then(function(response) {
-                    common.route_reload();
-                })
-                .fail(function() {
-                    tableform.dialog_enable_buttons();   
-                });
+            try {
+                await tableform.dialog_show_add(medicalprofile.dialog);
+                await tableform.fields_post(medicalprofile.dialog.fields, "mode=create", "medicalprofile");
+                common.route_reload();
+            }
+            catch(err) {
+                log.error(err, err);
+                tableform.dialog_enable_buttons();   
+            }
         },
 
         /* What to do when we switch between single/multiple treatments */

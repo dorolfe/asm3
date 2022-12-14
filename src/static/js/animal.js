@@ -1,20 +1,21 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
-/*global $, _, asm, common, config, controller, dlgfx, additional, edit_header, format, header, html, log, social, tableform, validate */
+/*global $, _, asm, common, config, controller, dlgfx, additional, edit_header, format, header, html, log, microchip, social, tableform, validate */
 
 $(function() {
 
-    var animal = {
+    "use strict";
+
+    const animal = {
 
         render_death: function() {
             return [
-                '<h3><a href="#">' + _("Death") + ' <img id="tabdeath" style="display: none" class="asm-icon asm-icon-death"></span></a></h3><div>',
+                '<h3><a href="#">' + _("Death") + ' <span id="tabdeath" style="display: none" class="asm-icon asm-icon-death"></span></a></h3><div>',
                 '<table class="additionaltarget" data="to6">',
                 '<tr>',
                 '<td>',
                 '<label for="deceaseddate">' + _("Deceased Date") + '</label>',
                 '</td>',
                 '<td>',
-                '<input class="asm-textbox asm-datebox" id="deceaseddate" data-json="DECEASEDDATE" data-post="deceaseddate" title="' + html.title(_("The date the animal died")) + '" />',
+                '<input class="asm-textbox asm-datebox" id="deceaseddate" data-json="DECEASEDDATE" data-post="deceaseddate" />',
                 '</td>',
                 '</tr>',
                 '<tr>',
@@ -30,15 +31,17 @@ $(function() {
                 '<tr>',
                 '<td colspan="2">',
                 '<label for="puttosleep">' + _("Euthanized") + '</label>',
-                '<input class="asm-checkbox" type="checkbox" id="puttosleep" data-json="PUTTOSLEEP" data-post="puttosleep" title="' + html.title(_("This animal was euthanized")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="puttosleep" data-json="PUTTOSLEEP" data-post="puttosleep" />',
                 '<label for="deadonarrival">' + _("Dead on arrival") + '</label>',
-                '<input class="asm-checkbox" type="checkbox" id="deadonarrival" data-json="ISDOA" data-post="deadonarrival" title="' + html.title(_("This animal was dead on arrival to the shelter")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="deadonarrival" data-json="ISDOA" data-post="deadonarrival" />',
+                '<label for="asilomarownerrequested" class="asilomar ownereuth">' + "Owner requested euthanasia" + '</label>',
+                '<input class="asm-checkbox asilomar ownereuth" type="checkbox" id="asilomarownerrequested" data-json="ASILOMAROWNERREQUESTEDEUTHANASIA" data-post="asilomarownerrequested" />',
                 '</td>',
                 '</tr>',
                 '</table>',
                 '<div>',
                 _("Notes") + '<br />',
-                '<textarea class="asm-textarea" title="' + html.title(_("Notes about the death of the animal")) + '" id="ptsreason" data-json="PTSREASON" data-post="ptsreason" rows="8"></textarea>',
+                '<textarea class="asm-textarea" title="' + html.title(_("Notes")) + '" id="ptsreason" data-json="PTSREASON" data-post="ptsreason" rows="8"></textarea>',
                 '</div>',
                 '</div>'
             ].join("\n");
@@ -50,14 +53,14 @@ $(function() {
                 '<div>',
                 '<table width="100%">',
                 '<tr>',
-                '<!-- left table -->',
-                '<td width="40%">',
+                // left table
+                '<td width="40%" class="asm-nested-table-td">',
                 '<table>',
                 '<tr>',
                 '<td><label for="sheltercode">' + _("Code") + '</label></td>',
                 '<td nowrap="nowrap">',
-                '<input type="text" id="sheltercode" data-json="SHELTERCODE" data-post="sheltercode" class="asm-halftextbox" title="' + html.title(_("The shelter reference number")) + '"  />',
-                '<input type="text" id="shortcode" data-json="SHORTCODE" data-post="shortcode" class="asm-halftextbox" title="' + html.title(_("A short version of the reference number")) + '" />',
+                '<input type="text" id="sheltercode" data-json="SHELTERCODE" data-post="sheltercode" class="asm-halftextbox" />',
+                '<input type="text" id="shortcode" data-json="SHORTCODE" data-post="shortcode" class="asm-halftextbox" />',
                 '<input type="hidden" id="yearcode" data-json="YEARCODEID" data-post="yearcode" />',
                 '<input type="hidden" id="uniquecode" data-json="UNIQUECODEID" data-post="uniquecode" />',
                 '</td>',
@@ -68,12 +71,12 @@ $(function() {
                 '<tr id="litteridrow">',
                 '<td>',
                 '<label for="litterid">' + _("Litter") + '</label></td>',
-                '<td><input type="text" id="litterid" data-json="ACCEPTANCENUMBER" data-post="litterid" class="asm-textbox" title="' + html.title(_("The litter this animal belongs to")) + '" />',
+                '<td><input type="text" id="litterid" data-json="ACCEPTANCENUMBER" data-post="litterid" class="asm-textbox" />',
                 '</td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="animalname">' + _("Name") + '</label></td>',
-                '<td><input type="text" id="animalname" data-json="ANIMALNAME" data-post="animalname" maxlength="255" class="asm-textbox" title="' + html.title(_("The animal name")) + '" />',
+                '<td><input type="text" id="animalname" data-json="ANIMALNAME" data-post="animalname" maxlength="255" class="asm-textbox" />',
                 '</td>',
                 '<td>',
                 '<button id="button-randomname">' + _("Generate a random name for this animal") + '</button>',
@@ -81,31 +84,31 @@ $(function() {
                 '</tr>',
                 '<tr>',
                 '<td><label for="sex">' + _("Sex") + '</label></td>',
-                '<td><select id="sex" data-json="SEX" data-post="sex" class="asm-selectbox" title="' + html.title(_("The animal sex")) + '">',
+                '<td><select id="sex" data-json="SEX" data-post="sex" class="asm-selectbox">',
                 html.list_to_options(controller.sexes, "ID", "SEX"),
                 '</select></td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="animaltype">' + _("Type") + '</label></td>',
-                '<td><select id="animaltype" data-json="ANIMALTYPEID" data-post="animaltype" class="asm-selectbox" title="' + html.title(_("The shelter category for this animal")) + '">',
+                '<td><select id="animaltype" data-json="ANIMALTYPEID" data-post="animaltype" class="asm-selectbox">',
                 html.list_to_options(controller.animaltypes, "ID", "ANIMALTYPE"),
                 '</select></td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="basecolour">' + _("Color") + '</label></td>',
-                '<td><select id="basecolour" data-json="BASECOLOURID" data-post="basecolour" class="asm-selectbox" title="' + html.title(_("The base color of this animal")) + '">',
+                '<td><select id="basecolour" data-json="BASECOLOURID" data-post="basecolour" class="asm-selectbox">',
                 html.list_to_options(controller.colours, "ID", "BASECOLOUR"),
                 '</select></td>',
                 '</tr>',
                 '<tr id="coattyperow">',
                 '<td><label for="coattype">' + _("Coat Type") + '</label></td>',
-                '<td><select id="coattype" data-json="COATTYPE" data-post="coattype" class="asm-selectbox" title="' + html.title(_("The coat type of this animal")) + '">',
+                '<td><select id="coattype" data-json="COATTYPE" data-post="coattype" class="asm-selectbox">',
                 html.list_to_options(controller.coattypes, "ID", "COATTYPE"),
                 '</select></td>',
                 '</tr>',
                 '<tr id="sizerow">',
                 '<td><label for="size">' + _("Size") + '</label></td>',
-                '<td><select id="size" data-json="SIZE" data-post="size" class="asm-selectbox" title="' + html.title(_("The size of this animal")) + '">',
+                '<td><select id="size" data-json="SIZE" data-post="size" class="asm-selectbox">',
                 html.list_to_options(controller.sizes, "ID", "SIZE"),
                 '</select></td>',
                 '</tr>',
@@ -128,22 +131,22 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- right table -->',
-                '<td>',
+                // right table
+                '<td class="asm-nested-table-td">',
                 '<table>',
                 '<tr>',
                 '<td>',
-                '<!-- second column-->',
-                '<table class="additionaltarget" data="to2">',
+                // second column
+                '<table class="additionaltarget asm-nested-table-td" data="to2">',
                 '<tr>',
                 '<td><label for="species">' + _("Species") + '</label></td>',
-                '<td><select id="species" data-json="SPECIESID" data-post="species" class="asm-selectbox" title="' + html.title(_("The species of this animal")) + '">',
+                '<td><select id="species" data-json="SPECIESID" data-post="species" class="asm-selectbox">',
                 html.list_to_options(controller.species, "ID", "SPECIESNAME"),
                 '</select></td>',
                 '</tr>',
                 '<tr>',
                 '<td><label for="breed1">' + _("Breed") + '</label></td>',
-                '<td><select id="breed1" data-json="BREEDID" data-post="breed1" class="asm-selectbox" title="' + html.title(_("The primary breed of this animal")) + '">',
+                '<td><select id="breed1" data-json="BREEDID" data-post="breed1" class="asm-selectbox">',
                 html.list_to_options_breeds(controller.breeds),
                 '</select>',
                 '<select id="breedp" class="asm-selectbox" style="display:none;">',
@@ -154,31 +157,45 @@ $(function() {
                 '<td>',
                 '<span style="white-space: nowrap">',
                 '<label for="crossbreed">' + _("Crossbreed") + '</label>',
-                '<input type="checkbox" class="asm-checkbox" id="crossbreed" data-json="CROSSBREED" data-post="crossbreed" title="' + _("This animal is a crossbreed") + '" /></td>',
+                '<input type="checkbox" class="asm-checkbox" id="crossbreed" data-json="CROSSBREED" data-post="crossbreed" /></td>',
                 '</span>',
-                '<td><select id="breed2" data-json="BREED2ID" data-post="breed2" class="asm-selectbox" title="' + html.title(_("The secondary breed of this animal")) + '">',
+                '<td><select id="breed2" data-json="BREED2ID" data-post="breed2" class="asm-selectbox">',
                 html.list_to_options_breeds(controller.breeds),
                 '</select></td>',
                 '</tr>',
                 '<tr id="locationrow">',
-                '<td><label for="location">' + _("Location") + '</label></td>',
+                '<td><label for="location">' + _("Location") + '</label>',
+                '<span class="asm-callout" id="callout-location">' + _("Where this animal is located within the shelter") + '</span>',
+                '</td>',
                 '<td>',
                 '<input id="archived" data-json="ARCHIVED" type="hidden" />',
                 '<input id="displaylocationname" data-json="DISPLAYLOCATIONNAME" type="hidden" />',
-                '<select id="location" data-json="SHELTERLOCATION" data-post="location" class="asm-selectbox" title="' + html.title(_("Where this animal is located within the shelter")) + '">',
+                '<select id="location" data-json="SHELTERLOCATION" data-post="location" class="asm-selectbox">',
                 html.list_to_options(controller.internallocations, "ID", "LOCATIONNAME"),
                 '</select></td>',
                 '</tr>',
                 '<tr id="locationunitrow">',
-                '<td><label for="unit">' + _("Unit") + '</label></td>',
+                '<td><label for="unit">' + _("Unit") + '</label>',
+                '<span class="asm-callout" id="callout-unit">' + _("Unit within the location, eg: pen or cage number") + '</span>',
+                '</td>',
                 '<td>',
-                '<input id="unit" data-json="SHELTERLOCATIONUNIT" data-post="unit" class="asm-textbox" title="' + html.title(_("Unit within the location, eg: pen or cage number")) + '" />',
+                '<input id="unit" data-json="SHELTERLOCATIONUNIT" data-post="unit" class="asm-textbox" />',
                 '</td>',
                 '</tr>',
                 '<tr id="lastlocation">',
                 '<td><label>' + _("Last Location") + '</label></td>',
                 '<td>',
                 '<a class="asm-embed-name" href="animal_find_results?logicallocation=onshelter&shelterlocation=' + controller.animal.SHELTERLOCATION + '">' + controller.animal.SHELTERLOCATIONNAME + ' ' + common.nulltostr(controller.animal.SHELTERLOCATIONUNIT) + '</a>',
+                '</td>',
+                '</tr>',
+                '<tr id="ownerrow">',
+                '<td>',
+                '<label for="owner">' + _("Owner"),
+                '<span class="asm-callout">' + _("Update the current owner of this animal without returning and creating movements that affect your figures.") + '</span>',
+                '</label>',
+                '</td>',
+                '<td>',
+                '<input id="originalowner" data-json="OWNERID" data-mode="brief" data-post="owner" type="hidden" class="asm-personchooser" />',
                 '</td>',
                 '</tr>',
                 '<tr id="animalflags">',
@@ -199,15 +216,15 @@ $(function() {
                 '<td><label for="fee">' + _("Adoption Fee") + '</label></td>',
                 '<td><input id="fee" data-json="FEE" data-post="fee" class="asm-currencybox asm-textbox" /></td>',
                 '</tr>',
-                '<!-- end second column -->',
+                // end second column
                 '</table>',
                 '</td>',
                 '</tr>',
-                '<!-- end right table -->',
+                // end right table
                 '</table>',
                 '</td>',
 
-                '<!-- end outer table -->',
+                // end outer table
                 '</tr>',
                 '</table>',
                 '</div>'
@@ -218,11 +235,11 @@ $(function() {
             return [
                 '<h3><a href="#">' + _("Entry") + '</a></h3>',
                 '<div>',
-                '<!-- outer table -->',
+                // outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td width="50%">',
-                '<!-- left table -->',
+                '<td width="50%" class="asm-nested-table-td">',
+                // left table
                 '<table width="100%">',
                 '<tr id="coordinatorrow">',
                 '<td valign="top" class="bottomborder">',
@@ -249,16 +266,16 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- right table -->',
+                // right table
                 '</td>',
-                '<td width="50%">',
+                '<td width="50%" class="asm-nested-table-td">',
                 '<table width="100%" class="additionaltarget" data="to4">',
                 '<tr id="datebroughtinrow">',
                 '<td>',
                 '<label for="datebroughtin">' + _("Date Brought In") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="datebroughtin" data-json="DATEBROUGHTIN" data-post="datebroughtin" class="asm-textbox asm-datebox" title="' + html.title(_("The date the animal was brought into the shelter")) + '" />',
+                '<input id="datebroughtin" data-json="DATEBROUGHTIN" data-post="datebroughtin" class="asm-textbox asm-datebox" />',
                 '</td>',
                 '</tr>',
                 '<tr id="timebroughtinrow">',
@@ -271,8 +288,7 @@ $(function() {
                 '</tr>',
                 '<tr id="entryreasonrow">',
                 '<td><label for="entryreason">' + _("Entry Category") + '</label></td>',
-                '<td><select id="entryreason" data-json="ENTRYREASONID" data-post="entryreason" class="asm-selectbox" title=',
-                '"' + html.title(_("The entry reason for this animal")) + '">',
+                '<td><select id="entryreason" data-json="ENTRYREASONID" data-post="entryreason" class="asm-selectbox">',
                 html.list_to_options(controller.entryreasons, "ID", "REASONNAME"),
                 '</select></td>',
                 '</tr>',
@@ -285,11 +301,16 @@ $(function() {
                 '<option value="3">Unhealthy and Untreatable</option>',
                 '</select></td>',
                 '</tr>',
+                '<tr id="jurisdictionrow">',
+                '<td><label for="jurisdiction">' + _("Jurisdiction") + '</label></td>',
+                '<td><select id="jurisdiction" data-json="JURISDICTIONID" data-post="jurisdiction" class="asm-selectbox">',
+                html.list_to_options(controller.jurisdictions, "ID", "JURISDICTIONNAME"),
+                '</select></td>',
+                '</tr>',
                 '<tr id="transferinrow">',
                 '<td></td>',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="transferin" data-json="ISTRANSFER" data-post="transferin" title=',
-                '"' + html.title(_("This animal was transferred from another shelter")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="transferin" data-json="ISTRANSFER" data-post="transferin" />',
                 '<label for="transferin">' + _("Transfer In") + '</label>',
                 '</td>',
                 '</tr>',
@@ -297,8 +318,7 @@ $(function() {
                 '<td></td>',
                 '<td>',
                 '<span style="white-space: nowrap">',
-                '<input class="asm-checkbox" type="checkbox" id="pickedup" data-json="ISPICKUP" data-post="pickedup" title=',
-                '"' + html.title(_("This animal was picked up")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="pickedup" data-json="ISPICKUP" data-post="pickedup" />',
                 '<label for="pickedup">' + _("Picked Up") + '</label>',
                 '</span>',
                 '</td>',
@@ -308,7 +328,7 @@ $(function() {
                 '<label for="pickuplocation">' + _("Pickup Location") + '</label>',
                 '</td>',
                 '<td>',
-                '<select class="asm-selectbox" id="pickuplocation" data-json="PICKUPLOCATIONID" data-post="pickuplocation" title="' + html.title(_("The location where the animal was picked up")) + '">',
+                '<select class="asm-selectbox" id="pickuplocation" data-json="PICKUPLOCATIONID" data-post="pickuplocation">',
                 html.list_to_options(controller.pickuplocations, "ID", "LOCATIONNAME"),
                 '</select></td>',
                 '</tr>',
@@ -327,8 +347,8 @@ $(function() {
                 '<input class="asm-checkbox" type="checkbox" id="hold" data-json="ISHOLD" data-post="hold" title=',
                 '"' + html.title(_("This animal should be held in case it is reclaimed")) + '" />',
                 '<label for="hold">' + _("Hold until") + '</label>',
-                '<input class="asm-halftextbox asm-datebox" id="holduntil" data-json="HOLDUNTILDATE" data-post="holduntil" title=',
-                '"' + html.title(_("Hold the animal until this date or blank to hold indefinitely")) + '" />',
+                '<span class="asm-callout" id="callout-hold">' + _("Hold the animal until this date or blank to hold indefinitely") + '</span>',
+                '<input class="asm-halftextbox asm-datebox" id="holduntil" data-json="HOLDUNTILDATE" data-post="holduntil" />',
                 '</span>',
                 '</td>',
                 '</tr>',
@@ -340,12 +360,6 @@ $(function() {
                 '<label for="asilomartransferexternal">' + "Outside community/coalition" + '</label>',
                 '</td>',
                 '</tr>',
-                '<tr class="asilomar">',
-                '<td></td>',
-                '<td>',
-                '<input class="asm-checkbox asilomar" type="checkbox" id="asilomarownerrequested" data-json="ASILOMAROWNERREQUESTEDEUTHANASIA" data-post="asilomarownerrequested" title="' + html.title("The owner requested euthanasia") + '" />',
-                '<label class="asilomar" for="asilomarownerrequested">' + "Owner requested euthanasia" + '</label>',
-                '</td></tr>',
                 '<tr id="bondedwith1row">',
                 '<td>',
                 '<label for="bonded1">' + _("Bonded With") + '</label>',
@@ -365,7 +379,7 @@ $(function() {
                 '<label for="reasonnotfromowner">' + _("Reason not from Owner") + '</label>',
                 '</td>',
                 '<td>',
-                '<textarea class="asm-textarea" id="reasonnotfromowner" title="' + html.title(_("Reason the owner did not bring in the animal themselves")) + '" ',
+                '<textarea class="asm-textarea" id="reasonnotfromowner" title="' + html.title(_("Reason not from Owner")) + '" ',
                 'data-json="REASONNO" data-post="reasonnotfromowner" rows="2"></textarea>',
                 '</td>',
                 '</tr>',
@@ -374,11 +388,11 @@ $(function() {
                 '<label for="reasonforentry">' + _("Reason for Entry") + '</label>',
                 '</td>',
                 '<td>',
-                '<textarea class="asm-textarea" title="' + _("Reason for entry") + '" id="reasonforentry" data-json="REASONFORENTRY" data-post="reasonforentry" rows="2"></textarea>',
+                '<textarea class="asm-textarea" title="' + _("Reason for Entry") + '" id="reasonforentry" data-json="REASONFORENTRY" data-post="reasonforentry" rows="2"></textarea>',
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- end outer table -->',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -389,55 +403,55 @@ $(function() {
         render_health_and_identification: function() {
             return [
                 '<h3><a href="#">' + _("Health and Identification") + ' <span id="tabhealth" style="display: none" class="asm-icon asm-icon-health"></span></a></h3><div>',
-                '<!-- Outer table -->',
+                // outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td>',
-                '<!-- Tested flags -->',
+                '<td class="asm-nested-table-td">',
+                // tested flags
                 '<table>',
                 '<tr id="microchiprow">',
                 '<td nowrap="nowrap">',
-                '<input class="asm-checkbox" type="checkbox" id="microchipped" data-json="IDENTICHIPPED" data-post="microchipped" title="' + html.title(_("This animal is microchipped")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="microchipped" data-json="IDENTICHIPPED" data-post="microchipped" />',
                 '<label for="microchipped">' + _("Microchipped") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="microchipdate" data-json="IDENTICHIPDATE" data-post="microchipdate" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was microchipped")) + '" />',
+                '<input id="microchipdate" data-json="IDENTICHIPDATE" data-post="microchipdate" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td>',
-                '<input type="text" id="microchipnumber" data-json="IDENTICHIPNUMBER" data-post="microchipnumber" class="asm-textbox" title="' + html.title(_("The microchip number")) + '" /> <span id="microchipbrand"></span>',
+                '<input type="text" id="microchipnumber" data-json="IDENTICHIPNUMBER" data-post="microchipnumber" class="asm-textbox" maxlength="15" placeholder="' + html.title(_("Number")) + '" /> <span id="microchipbrand"></span> <button id="button-microchipcheck">' + microchip.check_site_name() + '</button>',
                 '</td>',
                 '</tr>',
                 '<tr id="microchiprow2">',
                 '<td nowrap="nowrap"></td>',
                 '<td>',
-                '<input id="microchipdate2" data-json="IDENTICHIP2DATE" data-post="microchipdate2" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was microchipped")) + '" />',
+                '<input id="microchipdate2" data-json="IDENTICHIP2DATE" data-post="microchipdate2" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td>',
-                '<input type="text" id="microchipnumber2" data-json="IDENTICHIP2NUMBER" data-post="microchipnumber2" class="asm-textbox" title="' + html.title(_("The microchip number")) + '" /> <span id="microchipbrand2"></span>',
+                '<input type="text" id="microchipnumber2" data-json="IDENTICHIP2NUMBER" data-post="microchipnumber2" class="asm-textbox" maxlength="15" placeholder="' + html.title(_("Number")) + '" /> <span id="microchipbrand2"></span> <button id="button-microchipcheck2">' + microchip.check_site_name() + '</button>',
                 '</td>',
                 '</tr>',
                 '<tr id="tattoorow">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="tattoo" data-json="TATTOO" data-post="tattoo" title="' + html.title(_("This animal has a tattoo")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="tattoo" data-json="TATTOO" data-post="tattoo" />',
                 '<label for="tattoo">' + _("Tattoo") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="tattoodate" data-json="TATTOODATE" data-post="tattoodate" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was tattooed")) + '" />',
+                '<input id="tattoodate" data-json="TATTOODATE" data-post="tattoodate" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td>',
-                '<input type="text" id="tattoonumber" data-json="TATTOONUMBER" data-post="tattoonumber" class="asm-textbox" title="' + html.title(_("The tattoo number")) + '" />',
+                '<input type="text" id="tattoonumber" data-json="TATTOONUMBER" data-post="tattoonumber" class="asm-textbox" placeholder="' + html.title(_("Number")) + '" />',
                 '</td>',
                 '</tr>',
                 '<tr id="smarttagrow">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="smarttag" data-json="SMARTTAG" data-post="smarttag" title="' + html.title(_("This animal has a SmartTag PETID")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="smarttag" data-json="SMARTTAG" data-post="smarttag" />',
                 '<label for="smarttag">' + _("SmartTag PETID") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="smarttagnumber" data-json="SMARTTAGNUMBER" data-post="smarttagnumber" class="asm-halftextbox asm-alphanumberbox" title="' + html.title(_("The SmartTag PETID number")) + '" />',
+                '<input id="smarttagnumber" data-json="SMARTTAGNUMBER" data-post="smarttagnumber" class="asm-halftextbox asm-alphanumberbox" placeholder="' + html.title(_("Number")) + '" />',
                 '</td>',
                 '<td>',
-                '<select class="asm-selectbox" id="smarttagtype" data-json="SMARTTAGTYPE" data-post="smarttagtype" title="' + html.title(_("The SmartTag type")) + '">',
+                '<select class="asm-selectbox" id="smarttagtype" data-json="SMARTTAGTYPE" data-post="smarttagtype">',
                 '<option value="0">' + _("Annual") + '</option>',
                 '<option value="1">' + _("5 Year") + '</option>',
                 '<option value="2">' + _("Lifetime") + '</option>',
@@ -446,49 +460,49 @@ $(function() {
                 '</tr>',
                 '<tr id="neuteredrow">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="neutered" data-json="NEUTERED" data-post="neutered" title="' + html.title(_("This animal has been altered")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="neutered" data-json="NEUTERED" data-post="neutered" />',
                 '<label for="neutered">' + _("Altered") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="neutereddate" data-json="NEUTEREDDATE" data-post="neutereddate" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was altered")) + '" />',
+                '<input id="neutereddate" data-json="NEUTEREDDATE" data-post="neutereddate" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td valign="top">',
                 '<input id="neuteringvet" data-json="NEUTEREDBYVETID" data-post="neuteringvet" data-mode="brief" data-filter="vet" type="hidden" class="asm-personchooser" />',
                 '</td>',
                 '</tr>',
-                '<tr id="declawedrow">',
+                '<tr id="declawedrow" class="cats">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="declawed" data-json="DECLAWED" data-post="declawed" title="' + html.title(_("This animal has been declawed")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="declawed" data-json="DECLAWED" data-post="declawed" />',
                 '<label id="declawed-label" for="declawed">' + _("Declawed") + '</label>',
                 '</td>',
                 '</tr>',
-                '<tr id="heartwormrow">',
+                '<tr id="heartwormrow" class="dogs">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="heartwormtested" data-json="HEARTWORMTESTED" data-post="heartwormtested" title="' + html.title(_("This animal has been heartworm tested")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="heartwormtested" data-json="HEARTWORMTESTED" data-post="heartwormtested" />',
                 '<label for="heartwormtested">' + _("Heartworm Tested") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="heartwormtestdate" data-json="HEARTWORMTESTDATE" data-post="heartwormtestdate" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was heartworm tested")) + '" />',
+                '<input id="heartwormtestdate" data-json="HEARTWORMTESTDATE" data-post="heartwormtestdate" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td>',
-                '<select class="asm-selectbox" id="heartwormtestresult" data-json="HEARTWORMTESTRESULT" data-post="heartwormtestresult" title="' + html.title(_("The result of the heartworm test")) + '">',
+                '<select class="asm-selectbox" id="heartwormtestresult" data-json="HEARTWORMTESTRESULT" data-post="heartwormtestresult">',
                 html.list_to_options(controller.posneg, "ID", "NAME"),
                 '</select>',
                 '</td>',
                 '</tr>',
-                '<tr id="fivlrow">',
+                '<tr id="fivlrow" class="cats">',
                 '<td>',
-                '<input class="asm-checkbox" type="checkbox" id="fivltested" data-json="COMBITESTED" data-post="fivltested" title="' + html.title(_("This animal has been FIV/L tested")) + '" />',
+                '<input class="asm-checkbox" type="checkbox" id="fivltested" data-json="COMBITESTED" data-post="fivltested" />',
                 '<label for="fivltested">' + _("FIV/L Tested") + '</label>',
                 '</td>',
                 '<td>',
-                '<input id="fivltestdate" data-json="COMBITESTDATE" data-post="fivltestdate" class="asm-halftextbox asm-datebox" title="' + html.title(_("The date the animal was FIV/L tested")) + '" />',
+                '<input id="fivltestdate" data-json="COMBITESTDATE" data-post="fivltestdate" class="asm-halftextbox asm-datebox" placeholder="' + html.title(_("Date")) + '" />',
                 '</td>',
                 '<td>',
-                '<select class="asm-halftextbox selectbox" id="fivresult" data-json="COMBITESTRESULT" data-post="fivresult" title="' + html.title(_("The result of the FIV test")) + '">',
+                '<select class="asm-halftextbox selectbox" id="fivresult" data-json="COMBITESTRESULT" data-post="fivresult">',
                 html.list_to_options(controller.posneg, "ID", "NAME"),
                 '</select>',
-                '<select class="asm-halftextbox selectbox" id="flvresult" data-json="FLVRESULT" data-post="flvresult" title="' + html.title(_("The result of the FLV test")) + '">',
+                '<select class="asm-halftextbox selectbox" id="flvresult" data-json="FLVRESULT" data-post="flvresult">',
                 html.list_to_options(controller.posneg, "ID", "NAME"),
                 '</select>',
                 '</td>',
@@ -500,21 +514,21 @@ $(function() {
                 '<label for="specialneeds">' + _("Special Needs") + '</label>',
                 '</td>',
                 '</tr>',
-                '<!-- end flag table -->',
+                // end flag table
                 '</table>',
-                '<!-- separate table for additional fields -->',
+                // separate table for additional fields
                 '<table class="additionaltarget" data="to5">',
-                '<tr id="rabiestagrow">',
+                '<tr id="rabiestagrow" class="cats dogs">',
                 '<td><label for="rabiestag">' + _("Rabies Tag") + '</label></td>',
                 '<td><input id="rabiestag" data-json="RABIESTAG" data-post="rabiestag" class="asm-textbox" maxlength="20" />',
                 '</td>',
                 '</tr>',
                 '</table>',
                 '</td>',
-                '<td>',
-                '<!-- health problems/vet fields -->',
+                '<td class="asm-nested-table-td">',
+                // health problems/vet fields
                 '<label for="healthproblems">' + _("Health Problems") + '</label><br />',
-                '<textarea id="healthproblems" title="' + html.title(_("Any health problems the animal has")) + '" data-json="HEALTHPROBLEMS" data-post="healthproblems" class="asm-textarea" rows="4"></textarea>',
+                '<textarea id="healthproblems" data-json="HEALTHPROBLEMS" data-post="healthproblems" class="asm-textarea" rows="4"></textarea>',
                 '<table>',
                 '</table>',
                 '<table>',
@@ -535,7 +549,7 @@ $(function() {
                 '</td>',
                 '</tr>',
                 '</table>',
-                '<!-- end outer table -->',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -549,7 +563,7 @@ $(function() {
                 return;
             }
 
-            var h = [
+            let h = [
                 '<h3><a href="#">' + _("Incidents") + '</a></h3>',
                 '<div>',
                 '<table class="asm-table">',
@@ -587,18 +601,18 @@ $(function() {
             return [
                 '<h3><a href="#">' + _("Notes") + '</a></h3>',
                 '<div>',
-                '<!-- Outer table -->',
+                // outer table
                 '<table width="100%">',
                 '<tr>',
-                '<td>',
-                '<!-- Comments table -->',
+                '<td class="asm-nested-table-td">',
+                // comments table
                 '<table>',
                 '<tr id="markingsrow">',
                 '<td>',
                 '<label for="markings">' + _("Markings") + '</label>',
                 '</td>',
                 '<td width="80%">',
-                '<textarea class="asm-textarea" title="' + html.title(_("Any markings or distinguishing features the animal has")) + '" id="markings" data-json="MARKINGS" data-post="markings" rows="3"></textarea>',
+                '<textarea class="asm-textarea" id="markings" data-json="MARKINGS" data-post="markings" rows="3"></textarea>',
                 '</td>',
                 '</tr>',
                 '<tr id="hiddencommentsrow">',
@@ -607,22 +621,32 @@ $(function() {
                 '<span id="callout-hiddencomments" class="asm-callout">' + _("Hidden comments are for staff information only and will never be used on any adoption websites") + '</span>',
                 '</td>',
                 '<td>',
-                '<textarea class="asm-textarea" title="' + html.title(_("Hidden comments about the animal")) + '" id="hiddencomments" data-json="HIDDENANIMALDETAILS" data-post="hiddencomments" rows="3"></textarea>',
+                '<textarea class="asm-textarea" title="' + html.title(_("Hidden Comments")) + '" id="hiddencomments" data-json="HIDDENANIMALDETAILS" data-post="hiddencomments" rows="3"></textarea>',
                 '</td>',
                 '</tr>',
                 '<tr id="commentsrow">',
                 '<td>',
                 '<label for="comments">' + _("Description") + '</label>',
+                '<span id="callout-comments" class="asm-callout">' + _("The description is used for the animal's bio on adoption websites") + '</span>',
                 '<br/><button id="button-commentstomedia">' + _('Copy description to the notes field of the web preferred media for this animal') + '</button>',
                 '</td>',
                 '<td>',
                 '<textarea class="asm-textarea" title="' + html.title(_("Description")) + '" id="comments" data-json="ANIMALCOMMENTS" data-post="comments" rows="3"></textarea>',
                 '</td>',
                 '</tr>',
-                '</table>',
+                '<tr id="popupwarningrow">',
+                '<td>',
+                '<label for="popupwarning">' + _("Warning") + '</label>',
+                '<span id="callout-popupwarning" class="asm-callout">' + _("Show a warning when viewing this animal") + '</span>',
                 '</td>',
                 '<td>',
-                '<!-- Good with table -->',
+                '<textarea class="asm-textarea" title="' + html.title(_("Warning")) + '" id="popupwarning" data-json="POPUPWARNING" data-post="popupwarning" rows="3"></textarea>',
+                '</td>',
+                '</tr>',
+                '</table>',
+                '</td>',
+                '<td class="asm-nested-table-td">',
+                // good with table
                 '<table class="additionaltarget" data="to3">',
                 '<tr class="goodwith">',
                 '<td>',
@@ -646,11 +670,11 @@ $(function() {
                 '</tr>',
                 '<tr class="goodwith">',
                 '<td>',
-                '<label for="goodwithkids">' + _("Good with kids") + '</label>',
+                '<label for="goodwithkids">' + _("Good with children") + '</label>',
                 '</td>',
                 '<td>',
                 '<select class="asm-selectbox" id="goodwithkids" data-json="ISGOODWITHCHILDREN" data-post="goodwithkids">',
-                html.list_to_options(controller.ynun, "ID", "NAME"),
+                html.list_to_options(controller.ynunk, "ID", "NAME"),
                 '</select>',
                 '</td>',
                 '</tr>',
@@ -664,9 +688,9 @@ $(function() {
                 '</select>',
                 '</td>',
                 '</tr>',
-                '<!-- end good with -->',
+                // end good with
                 '</table>',
-                '<!-- end outer table -->',
+                // end outer table
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -680,8 +704,8 @@ $(function() {
                 return;
             }
 
-            var pname = function(p) {
-                var t = p;
+            const pname = function(p) {
+                let t = p;
                 if (p == "first") { t = _("Adoptable and published for the first time"); }
                 else if (p == "html") { t = html.icon("web") + " " + _("Published to Website"); }
                 else if (p == "petfinder") { t = "Published to petfinder.com"; }
@@ -689,6 +713,7 @@ $(function() {
                 else if (p == "rescuegroups") { t = "Published to rescuegroups.org"; }
                 else if (p == "meetapet") { t = "Published to meetapet.com"; }
                 else if (p == "helpinglostpets") { t = "Published to helpinglostpets.com"; }
+                else if (p == "savourlife") { t = "Published to savour-life.com.au"; }
                 else if (p == "petrescue") { t = "Published to petrescue.com.au"; }
                 else if (p == "petslocated") { t = "Published to petslocated.com"; }
                 else if (p == "maddiesfund") { t = "Published to Maddie's Pet Assistant"; }
@@ -702,6 +727,8 @@ $(function() {
                 else if (p == "foundanimals") { t = html.icon("microchip") + " Microchip registered with FoundAnimals"; }
 
                 else if (p == "shareweb") { t = html.icon("web") + " " + _("Shared weblink"); }
+                else if (p == "shareemail") { t = html.icon("email") + " " + _("Shared email"); }
+                else if (p == "sharepic") { t = html.icon("media") + " " + _("Shared photo"); }
                 else if (p == "facebook") { t = html.icon("facebook") + " Shared on Facebook"; }
                 else if (p == "twitter") { t = html.icon("twitter") + " Shared on Twitter"; }
                 else if (p == "gplus") { t = html.icon("gplus") + " Shared on Google+"; }
@@ -716,7 +743,7 @@ $(function() {
             ];
 
             $.each(controller.publishhistory, function(i, v) {
-                var err = "";
+                let err = "";
                 if (v.EXTRA) { 
                     err = " : <span style='color: red'>" + v.EXTRA + "</span>"; 
                 }
@@ -734,7 +761,7 @@ $(function() {
          * Render the animal details screen
          */
         render: function() {
-            var h = [
+            let h = [
                 '<div id="button-document-body" class="asm-menu-body">',
                 '<ul class="asm-menu-list">',
                 edit_header.template_list(controller.templates, "ANIMAL", controller.animal.ID),
@@ -745,7 +772,10 @@ $(function() {
                 edit_header.diary_task_list(controller.diarytasks, "ANIMAL"),
                 '</ul>',
                 '</div>',
-                '<div id="dialog-dt-date" style="display: none" title="' + _("Select date for diary task") + '">',
+                '<div id="dialog-clone-confirm" style="display: none" title="' + html.title(_("Clone")) + '">',
+                '<p><span class="ui-icon ui-icon-alert"></span> Clone this animal?</p>',
+                '</div>',
+                '<div id="dialog-dt-date" style="display: none" title="' + html.title(_("Select date for diary task")) + '">',
                 '<input type="hidden" id="diarytaskid" />',
                 '<table width="100%">',
                 '<tr>',
@@ -754,9 +784,13 @@ $(function() {
                 '</tr>',
                 '</table>',
                 '</div>',
+                '<div id="emailform"></div>',
+                '<div id="dialog-popupwarning" style="display: none" title="' + html.title(_("Warning")) + '">',
+                '<p>' + html.error(controller.animal.POPUPWARNING) + '</p>',
+                '</div>',
                 '<div id="dialog-merge" style="display: none" title="' + html.title(_("Select animal to merge")) + '">',
                 '<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em">',
-                '<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
+                '<p><span class="ui-icon ui-icon-info"></span>',
                 _("Select an animal to merge into this record. The selected animal will be removed, and their movements, diary notes, log entries, etc. will be reattached to this record."),
                 '</p>',
                 '</div>',
@@ -774,6 +808,8 @@ $(function() {
                 '<ul class="asm-menu-list">',
                     '<li id="button-shareweb" class="sharebutton asm-menu-item"><a '
                         + '" target="_blank" href="#">' + html.icon("web") + ' ' + _("Link to this animal") + '</a></li>',
+                    '<li id="button-sharepic" class="sharebutton asm-menu-item"><a '
+                        + '" target="_blank" href="#">' + html.icon("media") + ' ' + _("Link to a photo of this animal") + '</a></li>',
                     '<li id="button-shareemail" class="sharebutton asm-menu-item"><a '
                         + '" target="_blank" href="#">' + html.icon("email") + ' ' + _("Email") + '</a></li>',
                     '<li id="button-social" class="sharebutton asm-menu-category">' + _("Social") + ' </li>',
@@ -796,11 +832,12 @@ $(function() {
                     { id: "clone", text: _("Clone"), icon: "copy", tooltip: _("Create a new animal by copying this one") },
                     { id: "merge", text: _("Merge"), icon: "copy", tooltip: _("Merge another animal into this one") },
                     { id: "delete", text: _("Delete"), icon: "delete", tooltip: _("Delete this animal") },
+                    { id: "email", text: _("Email"), icon: "email", tooltip: _("Send an email relating to this animal") },
                     { id: "document", text: _("Document"), type: "buttonmenu", icon: "document", tooltip: _("Generate a document from this animal") },
                     { id: "diarytask", text: _("Diary Task"), type: "buttonmenu", icon: "diary-task", tooltip: _("Create diary notes from a task") },
                     { id: "match", text: _("Match"), icon: "match", tooltip: _("Match this animal with the lost and found database") },
                     { id: "littermates", text: _("Littermates"), icon: "litter", tooltip: _("View littermates") },
-                    { id: "share", text: _("Share"), type: "buttonmenu", icon: "social" }
+                    { id: "share", text: _("Share"), type: "buttonmenu", icon: "share" }
                 ]),
                 '<div id="asm-details-accordion">',
                 this.render_details(),
@@ -833,7 +870,7 @@ $(function() {
                     $(this).remove();
                 }
             });
-            if($('#breed1 option').size() == 0) {
+            if($('#breed1 option').length == 0) {
                 $('#breed1').append("<option value='0'>"+$('#species option:selected').text() + "</option>");
             }
             $('optgroup', $('#breed2')).remove();
@@ -843,35 +880,32 @@ $(function() {
                     $(this).remove();
                 }
             });
-            if ($('#breed2 option').size() == 0) {
+            if ($('#breed2 option').length == 0) {
                 $('#breed2').append("<option value='0'>"+$('#species option:selected').text()+"</option>");
             }
         },
 
         // Update the units available for the selected location
-        update_units: function() {
-            common.ajax_post("animal_new", "mode=units&locationid=" + $("#location").val())
-                .then(function(data) {
-                    var src = [];
-                    $.each(html.decode(data).split("&&"), function(i, v) {
-                        var u = v.split("|");
-                        var unit = u[0], desc = u[1];
-                        if (!unit) { return false; }
-                        if (!desc) { desc = _("(available)"); }
-                        src.push({ label: unit + ' : ' + desc, value: unit });
-                    });
-                    // Reload the source of available units
-                    $("#unit").autocomplete({ 
-                        source: src,
-                        // Dirty the form when an item is chosen from the dropdown
-                        select: function(event, ui) {
-                            validate.dirty(true);
-                        }
-                    // Display the autocomplete on focus
-                    }).bind('focus', function() { 
-                        $(this).autocomplete("search", ":"); 
-                    });
-                });
+        update_units: async function() {
+            const response = await common.ajax_post("animal_new", "mode=units&locationid=" + $("#location").val());
+            let src = [];
+            $.each(html.decode(response).split("&&"), function(i, v) {
+                let [unit, desc] = v.split("|");
+                if (!unit) { return false; }
+                if (!desc) { desc = _("(available)"); }
+                src.push({ label: unit + ' : ' + desc, value: unit });
+            });
+            // Reload the source of available units
+            $("#unit").autocomplete({ 
+                source: src,
+                // Dirty the form when an item is chosen from the dropdown
+                select: function(event, ui) {
+                    validate.dirty(true);
+                }
+            // Display the autocomplete on focus
+            }).bind('focus', function() { 
+                $(this).autocomplete("search", ":"); 
+            });
         },
 
         /** 
@@ -883,8 +917,8 @@ $(function() {
 
             // Hide additional accordion section if there aren't
             // any additional fields declared
-            var ac = $("#asm-additional-accordion");
-            var an = ac.next();
+            let ac = $("#asm-additional-accordion");
+            let an = ac.next();
             if (an.find(".additional").length == 0) {
                 ac.hide(); an.hide();
             }
@@ -910,14 +944,19 @@ $(function() {
                 $("#ptsreason").closest("div").fadeIn();
             }
 
-            // Only show declawed and fiv/l for cats
-            $("#declawedrow, #fivlrow").toggle( $("#species").select("value") == 2 );
+            // If we're a US shelter and this is a cat or a dog, show the asilomar categories
+            if (asm.locale == "en" && !config.bool("DisableAsilomar") &&
+                ($("#species").select("value") == 1 || $("#species").select("value") == 2) ) {
+                $(".asilomar").show();
+            }
+            else {
+                $(".asilomar").hide();
+            }
 
-            // Only show heartworm tested for dogs
-            $("#heartwormrow").toggle( $("#species").select("value") == 1 );
-
-            // Only show rabies tag for cats and dogs
-            $("#rabiestagrow").toggle( $("#species").select("value") == 1 || $("#species").select("value") == 2 );
+            // Show cat and dog specific fields based on species
+            $(".dogs, .cats").hide();
+            if ($("#species").select("value") == 1) { $(".dogs").show(); }
+            if ($("#species").select("value") == 2) { $(".cats").show(); }
 
             // Enable/disable health and identification fields based on checkboxes
             $("#microchipdate, #microchipnumber, #microchiprow2").toggle($("#microchipped").is(":checked"));
@@ -945,21 +984,21 @@ $(function() {
                 $("#broughtinby").personchooser("set_filter", "all");
             }
 
+            // Change the Original Owner text if this record is non-shelter
+            if ($("#flags option[value='nonshelter']").is(":selected")) {
+                $("label[for='originalowner']").html(_("Owner"));
+            }
+            else {
+                $("label[for='originalowner']").html(_("Original Owner"));
+            }
+
             // If the user ticked hold, there's no hold until date and
             // we have an auto remove days period, default the date
             if ($("#hold").is(":checked") && $("#holduntil").val() == "" && config.integer("AutoRemoveHoldDays") > 0) {
-                var holddate = format.date_js(controller.animal.DATEBROUGHTIN).getTime();
+                let holddate = format.date_js(controller.animal.DATEBROUGHTIN).getTime();
                 holddate += config.integer("AutoRemoveHoldDays") * 86400000;
                 holddate = format.date( new Date(holddate) );
                 $("#holduntil").val(holddate);
-            }
-
-            // If we're a US shelter, show the asilomar categories
-            if (asm.locale == "en" && !config.bool("DisableAsilomar")) {
-                $(".asilomar").show();
-            }
-            else {
-                $(".asilomar").hide();
             }
 
             // If the animal doesn't have a litterid, disable the littermates button
@@ -971,7 +1010,7 @@ $(function() {
             }
 
             // Not having any active litters disables join litter button
-            if ($("#sellitter option").size() == 0) {
+            if ($("#sellitter option").length == 0) {
                 $("#button-litterjoin").button("disable");
             }
 
@@ -996,11 +1035,13 @@ $(function() {
                     // Only hide the fee and intake date for non-shelter non-template animals
                     $("#feerow").hide(); 
                     $("#datebroughtinrow").hide();
+                    $("#timebroughtinrow").hide();
                 } 
                 $("#transferinrow").hide();
                 $("#pickeduprow").hide();
                 $("#holdrow").hide();
                 $("#coordinatorrow").hide();
+                $("#ownerrow").hide();
                 $("#broughtinbyownerrow").hide();
                 $("#originalownerrow td").removeClass("bottomborder");
                 $("#bondedwith1row").hide();
@@ -1009,6 +1050,24 @@ $(function() {
                 $("#reasonforentryrow").hide();
                 $("#reasonnotfromownerrow").hide();
                 $(".asilomar").hide();
+            }
+
+            // Still show the owner requested euth field for non-shelter animals
+            if (asm.locale == "en" && !config.bool("DisableAsilomar") &&
+                ($("#species").select("value") == 1 || $("#species").select("value") == 2) &&
+                $("#flags option[value='nonshelter']").is(":selected")) {
+                $(".ownereuth").show();
+            }
+
+            // If the animal has an exit movement, show the owner field
+            if (controller.animal.ARCHIVED == 1 && 
+                (controller.animal.ACTIVEMOVEMENTTYPE == 1 ||
+                controller.animal.ACTIVEMOVEMENTTYPE == 3 || 
+                controller.animal.ACTIVEMOVEMENTTYPE == 5)) {
+                $("#ownerrow").show();
+            }
+            else {
+                $("#ownerrow").hide();
             }
 
             // CONFIG ===========================
@@ -1050,14 +1109,14 @@ $(function() {
             }
 
             // Converting between whole number for weight and pounds and ounces
-            var lboz_to_fraction = function() {
-                var lb = format.to_int($("#weightlb").val());
+            const lboz_to_fraction = function() {
+                let lb = format.to_int($("#weightlb").val());
                 lb += format.to_int($("#weightoz").val()) / 16.0;
                 $("#weight").val(String(lb));
             };
 
-            var fraction_to_lboz = function() {
-                var kg = format.to_float($("#weight").val()),
+            const fraction_to_lboz = function() {
+                let kg = format.to_float($("#weight").val()),
                     lb = format.to_int($("#weight").val()),
                     oz = (kg - lb) * 16.0;
                 $("#weightlb").val(lb);
@@ -1088,6 +1147,7 @@ $(function() {
             if (config.bool("DontShowAdoptionFee")) { $("#feerow").hide(); }
             if (config.bool("DontShowAdoptionCoordinator")) { $("#coordinatorrow").hide(); }
             if (config.bool("DontShowCoatType")) { $("#coattyperow").hide(); }
+            if (config.bool("DontShowJurisdiction")) { $("#jurisdictionrow").hide(); }
             if (config.bool("DontShowSize")) { $("#sizerow").hide(); }
             if (config.bool("DontShowWeight")) { $("#kilosrow, #poundsrow").hide(); }
             if (config.bool("DontShowMicrochip")) { $("#microchiprow, #microchiprow2").hide(); }
@@ -1108,8 +1168,9 @@ $(function() {
 
             if (!common.has_permission("ca")) { $("#button-save").hide(); }
             if (!common.has_permission("aa")) { $("#button-clone").hide(); }
-            if (!common.has_permission("da")) { $("#button-merge").hide(); }
+            if (!common.has_permission("ma")) { $("#button-merge").hide(); }
             if (!common.has_permission("da")) { $("#button-delete").hide(); }
+            if (!common.has_permission("emo")) { $("#button-email").hide(); }
             if (!common.has_permission("gaf")) { $("#button-document").hide(); }
             if (!common.has_permission("adn")) { $("#button-diarytask").hide(); }
             if (!common.has_permission("vo")) { $("#button-currentowner").hide(); }
@@ -1138,32 +1199,18 @@ $(function() {
         },
 
         show_microchip_supplier: function() {
-            var pair = function(microchipnumber, microchipbrand) {
-                var m, 
-                    n = $(microchipnumber).val();
-                if (!n) { 
-                    $(microchipbrand).fadeOut();
-                    return;
-                }
-                $.each(controller.microchipmanufacturers, function(i, v) {
-                    if (n.length == v.length && new RegExp(v.regex).test(n)) {
-                        if (v.locales == "" || $.inArray(asm.locale, v.locales.split(" ")) != -1) {
-                            m = "<span style='font-weight: bold'>" + v.name + "</span>";
-                            return false;
-                        }
-                    }
-                });
-                if (!m && (n.length != 9 && n.length != 10 && n.length != 15)) {
-                    m = "<span style='font-weight: bold; color: red'>" + _("Invalid microchip number length") + "</span>";
-                }
-                if (!m) {
-                    m = "<span style='font-weight: bold; color: red'>" + _("Unknown microchip brand") + "</span>";
-                }
-                $(microchipbrand).html(m);
-                $(microchipbrand).fadeIn();
-            };
-            pair("#microchipnumber", "#microchipbrand");
-            pair("#microchipnumber2", "#microchipbrand2");
+            microchip.manufacturer("#microchipnumber", "#microchipbrand");
+            microchip.manufacturer("#microchipnumber2", "#microchipbrand2");
+            // Show the microchip check buttons
+            $("#button-microchipcheck, #button-microchipcheck2").hide();
+            if (microchip.is_check_available($("#microchipnumber").val())) { $("#button-microchipcheck").show(); }
+            if (microchip.is_check_available($("#microchipnumber2").val())) { $("#button-microchipcheck2").show(); }
+        },
+
+        show_popup_warning: async function() {
+            if (controller.animal.POPUPWARNING) {
+                await tableform.show_okcancel_dialog("#dialog-popupwarning", _("Ok"), { hidecancel: true });
+            }
         },
 
         /** Validates the form fields prior to saving */
@@ -1174,7 +1221,7 @@ $(function() {
             validate.reset();
 
             // name
-            if ($.trim($("#animalname").val()) == "") {
+            if (common.trim($("#animalname").val()) == "") {
                 header.show_error(_("Name cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("animalname");
@@ -1182,7 +1229,7 @@ $(function() {
             }
 
             // date brought in
-            if ($.trim($("#datebroughtin").val()) == "") {
+            if (common.trim($("#datebroughtin").val()) == "") {
                 header.show_error(_("Date brought in cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 3);
                 validate.highlight("datebroughtin");
@@ -1190,7 +1237,7 @@ $(function() {
             }
 
             // date of birth
-            if ($.trim($("#dateofbirth").val()) == "") {
+            if (common.trim($("#dateofbirth").val()) == "") {
                 header.show_error(_("Date of birth cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("dateofbirth");
@@ -1198,7 +1245,7 @@ $(function() {
             }
 
             // shelter code
-            if ($.trim($("#sheltercode").val()) == "") {
+            if (common.trim($("#sheltercode").val()) == "") {
                 header.show_error(_("Shelter code cannot be blank"));
                 $("#asm-details-accordion").accordion("option", "active", 0);
                 validate.highlight("sheltercode");
@@ -1214,21 +1261,19 @@ $(function() {
         },
 
         /** Generates a new animal code */
-        generate_code: function() {
+        generate_code: async function() {
             validate.dirty(false);
-            var formdata = "mode=gencode&datebroughtin=" + $("#datebroughtin").val() + 
+            let formdata = "mode=gencode&datebroughtin=" + $("#datebroughtin").val() + 
                 "&animaltypeid=" + $("#animaltype").val() +
                 "&entryreasonid=" + $("#entryreason").val() +
                 "&speciesid=" + $("#species").val();
-            common.ajax_post("animal", formdata)
-                .then(function(result) { 
-                    var codes = result.split("||");
-                    $("#sheltercode").val(html.decode(codes[0]));
-                    $("#shortcode").val(html.decode(codes[1]));
-                    $("#uniquecode").val(codes[2]);
-                    $("#yearcode").val(codes[3]);
-                    validate.dirty(true);
-                });
+            let response = await common.ajax_post("animal", formdata);
+            let codes = response.split("||");
+            $("#sheltercode").val(html.decode(codes[0]));
+            $("#shortcode").val(html.decode(codes[1]));
+            $("#uniquecode").val(codes[2]);
+            $("#yearcode").val(codes[3]);
+            validate.dirty(true);
         },
 
         /**
@@ -1237,13 +1282,13 @@ $(function() {
         set_sharinglinks: function() {
 
             // Share data
-            var share_url = asm.serviceurl + "?method=animal_view&animalid=" + controller.animal.ID;
-            var share_image = asm.serviceurl + "?method=animal_image&animalid=" + controller.animal.ID;
+            let share_url = asm.serviceurl + "?method=animal_view&animalid=" + controller.animal.ID;
+            let share_image = asm.serviceurl + "?method=animal_image&animalid=" + controller.animal.ID;
             if (asm.smcom) { share_url += "&account=" + asm.useraccount; share_image += "&account=" + asm.useraccount; }
-            var share_title = controller.animal.ANIMALNAME;
-            var share_description = controller.animal.WEBSITEMEDIANOTES;
+            let share_title = controller.animal.ANIMALNAME;
+            let share_description = controller.animal.WEBSITEMEDIANOTES;
             
-            var enc_share_url = "", enc_share_description = "", enc_share_image = "", enc_share_title = "";
+            let enc_share_url = "", enc_share_description = "", enc_share_image = "", enc_share_title = "";
 
             try {
                 enc_share_url = encodeURIComponent(share_url);
@@ -1267,12 +1312,13 @@ $(function() {
 
             // When a share button is clicked, mark it as such for the publishing history
             $("#button-share-body").on("click", "li", function() {
-                var service = $(this).attr("id").replace("button-", "");
+                let service = $(this).attr("id").replace("button-", "");
                 common.ajax_post("animal", "mode=shared&id=" + controller.animal.ID + "&service=" + service);
             });
 
-            // Web and email
+            // Web, picture and email
             $("#button-shareweb a").attr("href", share_url);
+            $("#button-sharepic a").attr("href", share_image);
             $("#button-shareemail a").attr("href", "mailto:?body=" + enc_share_url);
 
             // Facebook
@@ -1310,8 +1356,10 @@ $(function() {
             // Setup the document/diary task/social menu buttons
             $("#button-diarytask, #button-document, #button-share").asmmenu();
 
-            // If the option isn't set to allow alphanumeric/space
-            // characters in microchip and ntattoo numbers, use
+            $("#emailform").emailform();
+
+            // If the option isn't set to allow non-alphanumeric
+            // characters in microchip and tattoo numbers, use
             // the alphanumberbox widget.
             if (!config.bool("AllowNonANMicrochip")) {
                 $("#microchipnumber").alphanumber();
@@ -1367,11 +1415,20 @@ $(function() {
                 if (config.bool("ManualCodes")) { 
                     return;
                 }
-                if (config.str("CodingFormat").indexOf("Y") != -1 ||
-                    config.str("CodingFormat").indexOf("M") != -1 ||
-                    config.str("ShortCodingFormat").indexOf("Y") != -1 ||
+                let dbin = $("#datebroughtin").datepicker("getDate"), today = new Date();
+                if (config.str("CodingFormat").indexOf("M") != -1 ||
                     config.str("ShortCodingFormat").indexOf("M") != -1) {
-                    animal.generate_code();
+                    // If the month is not this month, regenerate the code
+                    if (dbin && dbin.getMonth() != today.getMonth()) {
+                        animal.generate_code();
+                    }
+                }
+                if (config.str("CodingFormat").indexOf("Y") != -1 ||
+                    config.str("ShortCodingFormat").indexOf("Y") != -1) {
+                    // If the year is not this year, regenerate the code
+                    if (dbin && dbin.getYear() != today.getYear()) {
+                        animal.generate_code();
+                    }
                 }
             });
 
@@ -1379,38 +1436,31 @@ $(function() {
             $("#litterid").autocomplete({source: html.decode(controller.activelitters)});
 
             // Diary task create ajax call
-            var create_task = function(taskid) {
-                var formdata = "mode=exec&id=" + controller.animal.ID + "&tasktype=ANIMAL&taskid=" + taskid + "&seldate=" + $("#seldate").val();
-                common.ajax_post("diarytask", formdata)
-                    .then(function(result) {
-                        // Attempt to save any changes before viewing the diary tab
-                        if (validate.unsaved) {
-                            validate.save(function() {
-                                common.route("animal_diary?id=" + controller.animal.ID);
-                            });
-                        }
-                        else {
-                            common.route("animal_diary?id=" + controller.animal.ID);
-                        }
+            const create_task = async function(taskid) {
+                let formdata = "mode=exec&id=" + controller.animal.ID + "&tasktype=ANIMAL&taskid=" + taskid + "&seldate=" + $("#seldate").val();
+                await common.ajax_post("diarytask", formdata);
+                // Attempt to save any changes before viewing the diary tab
+                if (validate.unsaved) {
+                    validate.save(function() {
+                        common.route("animal_diary?id=" + controller.animal.ID);
                     });
+                }
+                else {
+                    common.route("animal_diary?id=" + controller.animal.ID);
+                }
             };
 
             // Attach handlers for diary tasks
             $(".diarytask").each(function() {
-                var a = $(this);
-                var task = a.attr("data").split(" ");
-                var taskmode = task[0];
-                var taskid = task[1];
-                var taskneeddate = task[2];
-                $(this).click(function() {
+                let a = $(this);
+                const [taskmode, taskid, taskneeddate] = a.attr("data").split(" ");
+                $(this).click(async function() {
                     $("#seldate").val("");
                     // If the task needs a date, prompt for it
                     if (taskneeddate == "1") {
                         $("#diarytaskid").val(taskid);
-                        tableform.show_okcancel_dialog("#dialog-dt-date", _("Select"), { notblank: [ "seldate" ]})
-                            .then(function() {
-                                create_task($("#diarytaskid").val());
-                            });
+                        await tableform.show_okcancel_dialog("#dialog-dt-date", _("Select"), { notblank: [ "seldate" ]});
+                        create_task($("#diarytaskid").val());
                     }
                     else {
                         // No need for anything else, go create the task
@@ -1431,10 +1481,11 @@ $(function() {
                 validate.dirty(true);
             });
 
-            // If a value is set in the deceased date, set the default death reason
+            // If a value is set in the previously blank deceased date, 
+            // set the default death reason.
             // Another change event for this field handles visibility below
             $("#deceaseddate").change(function() {
-                if ($("#deceaseddate").val() != "") {
+                if ($("#deceaseddate").val() != "" && !controller.animal.DECEASEDDATE) {
                     $("#deathcategory").select("value", config.str("AFDefaultDeathReason"));
                 }
             });
@@ -1460,18 +1511,21 @@ $(function() {
             $("#crossbreed").click(animal.enable_widgets).keyup(animal.enable_widgets);
             $("#species").click(animal.enable_widgets).keyup(animal.enable_widgets);
 
-            validate.save = function(callback) {
+            validate.save = async function(callback) {
                 if (!animal.validation()) { header.hide_loading(); return; }
                 validate.dirty(false);
-                var formdata = "mode=save" +
+                let formdata = "mode=save" +
                     "&id=" + controller.animal.ID + 
                     "&recordversion=" + controller.animal.RECORDVERSION + 
                     "&" + $("input, select, textarea").not(".chooser").toPOST();
-                common.ajax_post("animal", formdata)
-                    .then(callback)
-                    .fail(function() {
-                        validate.dirty(true); 
-                    });
+                try {
+                    let response = await common.ajax_post("animal", formdata);
+                    callback(response);
+                }
+                catch(err) {
+                    log.error(err, err);
+                    validate.dirty(true); 
+                }
             };
 
             // Toolbar buttons
@@ -1482,27 +1536,23 @@ $(function() {
                 });
             });
 
-            $("#button-clone").button().click(function() {
-                $("#button-clone").button("disable");
-                var formdata = "mode=clone&animalid=" + $("#animalid").val();
+            $("#button-clone").button().click(async function() {
+                await tableform.show_okcancel_dialog("#dialog-clone-confirm", _("Clone"));
+                let formdata = "mode=clone&animalid=" + $("#animalid").val();
                 header.show_loading(_("Cloning..."));
-                common.ajax_post("animal", formdata)
-                    .then(function(result) { 
-                        header.hide_loading();
-                        common.route("animal?id=" + result + "&cloned=true"); 
-                    });
+                let response = await common.ajax_post("animal", formdata);
+                header.hide_loading();
+                common.route("animal?id=" + response + "&cloned=true"); 
             });
 
             $("#button-merge").button().click(function() {
-                var mb = {}; 
-                mb[_("Merge")] = function() { 
+                let mb = {}; 
+                mb[_("Merge")] = async function() { 
                     $("#dialog-merge").dialog("close");
-                    var formdata = "mode=merge&animalid=" + $("#animalid").val() + "&mergeanimalid=" + $("#mergeanimal").val();
-                    common.ajax_post("animal", formdata)
-                        .then(function() { 
-                            validate.dirty(false);
-                            common.route_reload(); 
-                        });
+                    let formdata = "mode=merge&animalid=" + $("#animalid").val() + "&mergeanimalid=" + $("#mergeanimal").val();
+                    await common.ajax_post("animal", formdata);
+                    validate.dirty(false);
+                    common.route_reload(); 
                 };
                 mb[_("Cancel")] = function() { $(this).dialog("close"); };
                 $("#dialog-merge").dialog({
@@ -1516,15 +1566,55 @@ $(function() {
                 });
             });
 
-            $("#button-delete").button().click(function() {
-                tableform.delete_dialog(null, _("This will permanently remove this animal, are you sure?"))
-                    .then(function() {
-                        var formdata = "mode=delete&animalid=" + $("#animalid").val();
-                        return common.ajax_post("animal", formdata);
-                    })
-                    .then(function() { 
-                        common.route("main");
-                    });
+            $("#button-delete").button().click(async function() {
+                await tableform.delete_dialog(null, _("This will permanently remove this animal, are you sure?"));
+                let formdata = "mode=delete&animalid=" + $("#animalid").val();
+                await common.ajax_post("animal", formdata);
+                common.route("main");
+            });
+
+            $("#button-email").button().click(function() {
+                let defaultemail = "", defaultname = "", toaddresses = [];
+                // Use the latest reservation/person if the animal is on shelter/foster and a reserve is available
+                if (controller.animal && controller.animal.ARCHIVED == 0 && controller.animal.RESERVEDOWNEREMAILADDRESS) {
+                    defaultemail = controller.animal.RESERVEDOWNEREMAILADDRESS;
+                    defaultname = controller.animal.RESERVEDOWNERNAME;
+                }
+                else if (controller.animal && controller.animal.CURRENTOWNEREMAILADDRESS) {
+                    defaultemail = controller.animal.CURRENTOWNEREMAILADDRESS;
+                    defaultname = controller.animal.CURRENTOWNERNAME;
+                }
+                // Other useful addresses for the dialog
+                if (controller.animal && controller.animal.RESERVEDOWNEREMAILADDRESS) { 
+                    toaddresses.push(controller.animal.RESERVEDOWNEREMAILADDRESS);
+                }
+                if (controller.animal && controller.animal.CURRENTOWNEREMAILADDRESS) { 
+                    toaddresses.push(controller.animal.CURRENTOWNEREMAILADDRESS);
+                }
+                if (controller.animal && controller.animal.CURRENTVETEMAILADDRESS) { 
+                    toaddresses.push(controller.animal.CURRENTVETEMAILADDRESS);
+                }
+                if (controller.animal && controller.animal.ADOPTIONCOORDINATOREMAILADDRESS) {
+                    toaddresses.push(controller.animal.ADOPTIONCOORDINATOREMAILADDRESS);
+                }
+                if (controller.animal && controller.animal.ORIGINALOWNEREMAILADDRESS) {
+                    toaddresses.push(controller.animal.ORIGINALOWNEREMAILADDRESS);
+                }
+                if (controller.animal && controller.animal.BROUGHTINBYEMAILADDRESS) {
+                    toaddresses.push(controller.animal.BROUGHTINBYEMAILADDRESS);
+                }
+                $("#emailform").emailform("show", {
+                    title: _("Send email"),
+                    post: "animal",
+                    formdata: "mode=email&animalid=" + controller.animal.ID,
+                    name: defaultname,
+                    email: defaultemail,
+                    toaddresses: toaddresses,
+                    animalid: controller.animal.ID, 
+                    subject: controller.animal.ANIMALNAME + " - " + controller.animal.CODE,
+                    logtypes: controller.logtypes,
+                    templates: controller.templatesemail
+                });
             });
 
             $("#button-match").button().click(function() {
@@ -1540,42 +1630,41 @@ $(function() {
                 .button({ icons: { primary: "ui-icon-refresh" }, text: false })
                 .click(animal.generate_code);
 
+            $("#button-microchipcheck")
+                .button({ icons: { primary: "ui-icon-search" }, text: false })
+                .click(function() { microchip.check($("#microchipnumber").val()); });
+
+            $("#button-microchipcheck2")
+                .button({ icons: { primary: "ui-icon-search" }, text: false })
+                .click(function() { microchip.check($("#microchipnumber2").val()); });
+
             $("#button-randomname")
                 .button({ icons: { primary: "ui-icon-tag" }, text: false })
-                .click(function() {
+                .click(async function() {
                     validate.dirty(false);
-                    var formdata = "mode=randomname&sex=" + $("#sex").val();
-                    common.ajax_post("animal", formdata)
-                        .then(function(result) { 
-                            $("#animalname").val(result);
-                            validate.dirty(true);
-                        });
+                    let formdata = "mode=randomname&sex=" + $("#sex").val();
+                    let response = await common.ajax_post("animal", formdata);
+                    $("#animalname").val(response);
+                    validate.dirty(true);
                 });
 
             $("#button-commentstomedia")
                 .hide()
                 .button({ icons: { primary: "ui-icon-arrow-1-ne" }, text: false })
-                .click(function() {
+                .click(async function() {
                     $("#button-commentstomedia").button("disable");
-                    var formdata = "mode=webnotes&id=" + $("#animalid").val() + "&" + $("#comments").toPOST();
-                    common.ajax_post("animal", formdata)
-                        .then(function(result) { 
-                            $("#button-commentstomedia").button("enable");
-                            header.show_info(_("Comments copied to web preferred media."));
-                        });
+                    let formdata = "mode=webnotes&id=" + $("#animalid").val() + "&" + $("#comments").toPOST();
+                    await common.ajax_post("animal", formdata);
+                    $("#button-commentstomedia").button("enable");
+                   header.show_info(_("Comments copied to web preferred media."));
                 });
 
             $(".forgetlink").button({ icons: { primary: "ui-icon-trash" }, text: false })
-                .click(function() {
-                    var t = $(this), service = $(this).attr("data-service");
-                    common.ajax_post("animal", "mode=forgetpublish&id=" + controller.animal.ID + "&service=" + service)
-                        .then(function() {
-                            t.closest("p").fadeOut();
-                        });
+                .click(async function() {
+                    let t = $(this), service = $(this).attr("data-service");
+                    await common.ajax_post("animal", "mode=forgetpublish&id=" + controller.animal.ID + "&service=" + service);
+                    t.closest("p").fadeOut();
                 });
-
-
-
         },
 
         sync: function() {
@@ -1605,6 +1694,10 @@ $(function() {
 
             // Dirty handling
             validate.bind_dirty([ "animal_" ]);
+            validate.indicator(["animalname", "dateofbirth", "datebroughtin" ]);
+
+            // If a popup warning has been set, display it
+            animal.show_popup_warning();
 
         },
 
@@ -1612,9 +1705,12 @@ $(function() {
             validate.unbind_dirty();
             common.widget_destroy("#dialog-dt-date");
             common.widget_destroy("#dialog-merge");
+            common.widget_destroy("#dialog-clone-confirm");
+            common.widget_destroy("#dialog-popupwarning");
             common.widget_destroy("#mergeanimal", "animalchooser");
             common.widget_destroy("#bonded1", "animalchooser");
             common.widget_destroy("#bonded2", "animalchooser");
+            common.widget_destroy("#owner", "personchooser");
             common.widget_destroy("#originalowner", "personchooser");
             common.widget_destroy("#broughtinby", "personchooser");
             common.widget_destroy("#neuteringvet", "personchooser");
@@ -1622,6 +1718,7 @@ $(function() {
             common.widget_destroy("#pickedupby", "personchooser");
             common.widget_destroy("#currentvet", "personchooser");
             common.widget_destroy("#ownersvet", "personchooser");
+            common.widget_destroy("#emailform");
         },
 
         name: "animal",
@@ -1642,4 +1739,3 @@ $(function() {
     common.module_register(animal);
 
 });
-

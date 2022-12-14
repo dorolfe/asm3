@@ -10,7 +10,7 @@ import asm3.media
 import asm3.movement
 import asm3.utils
 import asm3.wordprocessor
-from asm3.sitedefs import MULTIPLE_DATABASES_PUBLISH_DIR, MULTIPLE_DATABASES_PUBLISH_FTP, SERVICE_URL
+from asm3.sitedefs import SERVICE_URL
 
 import ftplib
 import glob
@@ -24,19 +24,20 @@ def quietcallback(x):
     """ ftplib callback that does nothing instead of dumping to stdout """
     pass
 
-def get_animal_data(dbo, pc=None, animalid=0, include_additional_fields=False, recalc_age_groups=True, strip_personal_data=False, limit=0):
+def get_animal_data(dbo, pc=None, animalid=0, include_additional_fields=False, recalc_age_groups=True, strip_personal_data=False, publisher_key="", limit=0):
     """
     Returns a resultset containing the animal info for the criteria given.
     pc: The publish criteria (if None, default is used)
     animalid: If non-zero only returns the animal given (if it is adoptable)
     include_additional_fields: Load additional fields for each result
     strip_personal_data: Remove any personal data such as surrenderer, brought in by, etc.
+    publisher_key: The publisher calling this function
     limit: Only return limit rows.
     """
     if pc is None:
         pc = PublishCriteria(asm3.configuration.publisher_presets(dbo))
     
-    sql = get_animal_data_query(dbo, pc, animalid)
+    sql = get_animal_data_query(dbo, pc, animalid, publisher_key=publisher_key)
     rows = dbo.query(sql, distincton="ID")
     asm3.al.debug("get_animal_data_query returned %d rows" % len(rows), "publishers.base.get_animal_data", dbo)
 
@@ -68,10 +69,14 @@ def get_animal_data(dbo, pc=None, animalid=0, include_additional_fields=False, r
 
     # Strip any personal data if requested
     if strip_personal_data:
+        personal = ["ADOPTIONCOORDINATOR", "ORIGINALOWNER", "BROUGHTINBY", 
+            "CURRENTOWNER", "OWNER", "RESERVEDOWNER", 
+            "CURRENTVET", "NEUTERINGVET", "OWNERSVET"]
         for r in rows:
             for k in r.keys():
-                if k.startswith("ORIGINALOWNER") or k.startswith("BROUGHTINBY") or k.startswith("CURRENTOWNER") or k.startswith("RESERVEDOWNER"):
-                    r[k] = ""
+                for p in personal:
+                    if k.startswith(p):
+                        r[k] = ""
 
     # Recalculate age groups
     if recalc_age_groups:
@@ -86,6 +91,14 @@ def get_animal_data(dbo, pc=None, animalid=0, include_additional_fields=False, r
         """
         for r in rows:
             if r.ID == aid:
+                # Add some useful values for publishers that can accept bonded animal info
+                a.BONDEDNAME1 = a.ANIMALNAME
+                a.BONDEDNAME2 = r.ANIMALNAME
+                a.BONDEDSEX = r.SEX
+                a.BONDEDMICROCHIPNUMBER = r.IDENTICHIPNUMBER
+                a.BONDEDBREEDNAME = r.BREEDNAME
+                a.BONDEDSIZE = r.SIZE
+                a.BONDEDDATEOFBIRTH = r.DATEOFBIRTH
                 a.ANIMALNAME = "%s / %s" % (a.ANIMALNAME, r.ANIMALNAME)
                 r.REMOVE = True # Flag this row for removal
                 asm3.al.debug("merged animal %d into %d" % (aid, a.ID), "publishers.base.get_animal_data", dbo)
@@ -132,9 +145,12 @@ def get_animal_data(dbo, pc=None, animalid=0, include_additional_fields=False, r
 
     return rows
 
-def get_animal_data_query(dbo, pc, animalid=0):
+def get_animal_data_query(dbo, pc, animalid=0, publisher_key=""):
     """
     Generate the adoptable animal query.
+    publisher_key is used to generate an exclusion to remove animals who have 
+        a flag called "Exclude from publisher_key" - this prevents animals
+        eg: being sent to PetFinder (Exclude from petfinder)
     """
     sql = asm3.animal.get_animal_query(dbo)
     # Always include non-dead courtesy listings
@@ -144,7 +160,9 @@ def get_animal_data_query(dbo, pc, animalid=0):
     if not pc.includeCaseAnimals: 
         sql += " AND a.CrueltyCase = 0"
     if not pc.includeNonNeutered:
-        sql += " AND a.Neutered = 1"
+        sql += " AND (a.Neutered = 1 OR a.SpeciesID NOT IN (%s))" % asm3.configuration.alert_species_neuter(dbo)
+    if not pc.includeNonMicrochipped:
+        sql += " AND (a.Identichipped = 1 OR a.SpeciesID NOT IN (%s))" % asm3.configuration.alert_species_microchip(dbo)
     if not pc.includeWithoutImage: 
         sql += " AND EXISTS(SELECT ID FROM media WHERE WebsitePhoto = 1 AND ExcludeFromPublish = 0 AND LinkID = a.ID AND LinkTypeID = 0)"
     if not pc.includeReservedAnimals: 
@@ -155,6 +173,8 @@ def get_animal_data_query(dbo, pc, animalid=0):
         sql += " AND (a.IsQuarantine = 0 OR a.IsQuarantine Is Null)"
     if not pc.includeTrial:
         sql += " AND a.HasTrialAdoption = 0"
+    if publisher_key != "":
+        sql += " AND LOWER(a.AdditionalFlags) NOT LIKE LOWER('%%Exclude from %s|%%')" % publisher_key
     # Make sure animal is old enough
     sql += " AND a.DateOfBirth <= " + dbo.sql_value(dbo.today(offset = pc.excludeUnderWeeks * -7))
     # Filter out dead and unadoptable animals
@@ -165,7 +185,7 @@ def get_animal_data_query(dbo, pc, animalid=0):
     sql += " AND NOT EXISTS(SELECT ID FROM adoption WHERE MovementType = 1 AND AnimalID = a.ID AND MovementDate > %s)" % dbo.sql_value(dbo.today())
     # Build a set of OR clauses based on any movements/locations
     moveor = []
-    if len(pc.internalLocations) > 0 and pc.internalLocations[0].strip() != "null":
+    if len(pc.internalLocations) > 0 and pc.internalLocations[0].strip() != "null" and "".join(pc.internalLocations) != "":
         moveor.append("(a.Archived = 0 AND a.ActiveMovementID = 0 AND a.ShelterLocation IN (%s))" % ",".join(pc.internalLocations))
     else:
         moveor.append("(a.Archived = 0 AND a.ActiveMovementID = 0)")
@@ -188,9 +208,10 @@ def get_microchip_data(dbo, patterns, publishername, allowintake = True, organis
     organisation_email: The org email to set for intake animals (if blank, uses asm3.configuration.email())
     """
     movementtypes = asm3.configuration.microchip_register_movements(dbo)
+    registerfrom = asm3.i18n.display2python(dbo.locale, asm3.configuration.microchip_register_from(dbo))
 
     try:
-        rows = dbo.query(get_microchip_data_query(dbo, patterns, publishername, movementtypes, allowintake), distincton="ID")
+        rows = dbo.query(get_microchip_data_query(dbo, patterns, publishername, movementtypes, registerfrom, allowintake), distincton="ID")
     except Exception as err:
         asm3.al.error(str(err), "publisher.get_microchip_data", dbo, sys.exc_info())
 
@@ -199,6 +220,7 @@ def get_microchip_data(dbo, patterns, publishername, allowintake = True, organis
     orgtown = asm3.configuration.organisation_town(dbo)
     orgcounty = asm3.configuration.organisation_county(dbo)
     orgpostcode = asm3.configuration.organisation_postcode(dbo)
+    orgcountry = asm3.configuration.organisation_country(dbo)
     orgtelephone = asm3.configuration.organisation_telephone(dbo)
     email = asm3.configuration.email(dbo)
     if organisation_email != "": email = organisation_email
@@ -231,6 +253,7 @@ def get_microchip_data(dbo, patterns, publishername, allowintake = True, organis
             r.CURRENTOWNERTOWN = r.ORIGINALOWNERTOWN
             r.CURRENTOWNERCOUNTY = r.ORIGINALOWNERCOUNTY
             r.CURRENTOWNERPOSTCODE = r.ORIGINALOWNERPOSTCODE
+            r.CURRENTOWNERCOUNTRY = r.ORIGINALOWNERCOUNTRY
             r.CURRENTOWNERCITY = r.ORIGINALOWNERTOWN
             r.CURRENTOWNERSTATE = r.ORIGINALOWNERCOUNTY
             r.CURRENTOWNERZIPCODE = r.ORIGINALOWNERPOSTCODE
@@ -251,6 +274,7 @@ def get_microchip_data(dbo, patterns, publishername, allowintake = True, organis
             r.CURRENTOWNERTOWN = orgtown
             r.CURRENTOWNERCOUNTY = orgcounty
             r.CURRENTOWNERPOSTCODE = orgpostcode
+            r.CURRENTOWNERCOUNTRY = orgcountry
             r.CURRENTOWNERCITY = orgtown
             r.CURRENTOWNERSTATE = orgcounty
             r.CURRENTOWNERZIPCODE = orgpostcode
@@ -271,7 +295,7 @@ def get_microchip_data(dbo, patterns, publishername, allowintake = True, organis
 
     return rows + extras
 
-def get_microchip_data_query(dbo, patterns, publishername, movementtypes = "1", allowintake = True):
+def get_microchip_data_query(dbo, patterns, publishername, movementtypes = "1", registerfrom = None, allowintake = True):
     """
     Generates a query for unpublished microchips.
     It does this by looking for animals who have microchips matching the pattern where
@@ -283,39 +307,54 @@ def get_microchip_data_query(dbo, patterns, publishername, movementtypes = "1", 
                    together in the preamble, eg: [ '977', "a.SmartTag = 1 AND a.SmartTagNumber <> ''" ]
     publishername: The name of the microchip registration publisher, eg: pettracuk
     movementtypes: An IN clause of movement types to include. 11 can be used for trial adoptions
+    registerfrom: None for all, or a cut off date to only register chips where the event triggering reg was after this date
     """
     pclauses = []
     for p in patterns:
-        if p.startswith("9") or p.startswith("0") or p.startswith("1") or p.startswith("4"):
+        if len(p) > 0 and p[0] in [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]:
             pclauses.append("(a.IdentichipNumber IS NOT NULL AND a.IdentichipNumber LIKE '%s%%')" % p)
             pclauses.append("(a.Identichip2Number IS NOT NULL AND a.Identichip2Number LIKE '%s%%')" % p)
         else:
             pclauses.append("(%s)" % p)
+    if registerfrom is None:
+        registerfrom = dbo.today(offset=-365*20) # No register from date set, go back 20 years
     trialclause = ""
     if movementtypes.find("11") == -1:
         trialclause = "AND a.HasTrialAdoption = 0"
     intakeclause = ""
     if movementtypes.find("0") != -1 and allowintake:
         # Note: Use of MostRecentEntryDate will pick up returns as well as intake
-        intakeclause = "OR (a.NonShelterAnimal = 0 AND a.IsHold = 0 AND a.Archived = 0 AND (a.ActiveMovementID = 0 OR a.ActiveMovementType = 2) " \
+        intakeclause = "OR (a.NonShelterAnimal = 0 AND a.IsHold = 0 AND a.Archived = 0 " \
+            "AND (a.ActiveMovementID = 0 OR a.ActiveMovementType = 2) " \
             "AND NOT EXISTS(SELECT SentDate FROM animalpublished WHERE PublishedTo = '%(publishername)s' " \
-            "AND AnimalID = a.ID AND SentDate >= a.MostRecentEntryDate))" % { "publishername": publishername }
-    nonshelterclause = "OR (a.NonShelterAnimal = 1 AND a.OriginalOwnerID Is Not Null AND a.OriginalOwnerID > 0 AND a.IdentichipDate Is Not Null " \
+            "AND AnimalID = a.ID AND SentDate >= a.MostRecentEntryDate) " \
+            "AND a.MostRecentEntryDate > %(regfrom)s " \
+            ")" % { "publishername": publishername, "regfrom": dbo.sql_value(registerfrom) }
+    nonshelterclause = "OR (a.NonShelterAnimal = 1 AND a.OriginalOwnerID Is Not Null " \
+        "AND a.OriginalOwnerID > 0 AND a.IdentichipDate Is Not Null " \
         "AND NOT EXISTS(SELECT SentDate FROM animalpublished WHERE PublishedTo = '%(publishername)s' " \
-        "AND AnimalID = a.ID AND SentDate >= a.IdentichipDate))" % { "publishername": publishername }
-    where = " WHERE (%(patterns)s) AND a.DeceasedDate Is Null " \
+        "AND AnimalID = a.ID AND SentDate >= a.IdentichipDate) " \
+        "AND a.IdentichipDate > %(regfrom)s " \
+        ")" % { "publishername": publishername, "regfrom": dbo.sql_value(registerfrom) }
+    where = " WHERE (%(patterns)s) " \
+        "AND a.DeceasedDate Is Null " \
+        "AND a.Identichipped=1 " \
         "AND (a.IsNotForRegistration Is Null OR a.IsNotForRegistration=0) " \
         "AND (" \
         "(a.ActiveMovementID > 0 AND a.ActiveMovementType > 0 AND a.ActiveMovementType IN (%(movementtypes)s) %(trialclause)s " \
         "AND NOT EXISTS(SELECT SentDate FROM animalpublished WHERE PublishedTo = '%(publishername)s' " \
-        "AND AnimalID = a.ID AND SentDate >= a.ActiveMovementDate)) " \
+        "AND AnimalID = a.ID AND SentDate >= %(movementdate)s ) AND a.ActiveMovementDate > %(regfrom)s ) " \
         "%(nonshelterclause)s " \
         "%(intakeclause)s " \
         ")" % { 
             "patterns": " OR ".join(pclauses),
+            # Using max of movementdate/movement.lastchanged prevents registration on intake 
+            # on the same day preventing adopter registration
+            "movementdate": dbo.sql_greatest([ "a.ActiveMovementDate", "am.LastChangedDate" ]), 
             "movementtypes": movementtypes, 
             "intakeclause": intakeclause,
             "nonshelterclause": nonshelterclause,
+            "regfrom": dbo.sql_value(registerfrom), 
             "trialclause": trialclause,
             "publishername": publishername }
     sql = asm3.animal.get_animal_query(dbo) + where
@@ -333,7 +372,7 @@ def get_adoption_status(dbo, a):
     if a.ARCHIVED == 0 and a.HASACTIVERESERVE == 1: return asm3.i18n._("Reserved", l)
     if a.ARCHIVED == 0 and a.HASPERMANENTFOSTER == 1: return asm3.i18n._("Permanent Foster", l)
     if is_animal_adoptable(dbo, a): return asm3.i18n._("Adoptable", l)
-    return asm3.i18n._("Not For Adoption", l)
+    return asm3.i18n._("Not for adoption", l)
 
 def is_animal_adoptable(dbo, a):
     """
@@ -347,7 +386,8 @@ def is_animal_adoptable(dbo, a):
     if a.HASFUTUREADOPTION == 1: return False
     if a.HASPERMANENTFOSTER == 1: return False
     if a.CRUELTYCASE == 1 and not p.includeCaseAnimals: return False
-    if a.NEUTERED == 0 and not p.includeNonNeutered: return False
+    if a.NEUTERED == 0 and not p.includeNonNeutered and str(a.SPECIESID) in asm3.configuration.alert_species_neuter(dbo).split(","): return False
+    if a.IDENTICHIPPED == 0 and not p.includeNonMicrochipped and str(a.SPECIESID) in asm3.configuration.alert_species_microchip(dbo).split(","): return False
     if a.HASACTIVERESERVE == 1 and not p.includeReservedAnimals: return False
     if a.ISHOLD == 1 and not p.includeHold: return False
     if a.ISQUARANTINE == 1 and not p.includeQuarantine: return False
@@ -360,7 +400,7 @@ def is_animal_adoptable(dbo, a):
     if not p.includeWithoutDescription and asm3.configuration.publisher_use_comments(dbo) and a.ANIMALCOMMENTS == "": return False
     if not p.includeWithoutDescription and not asm3.configuration.publisher_use_comments(dbo) and a.WEBSITEMEDIANOTES == "": return False
     if p.excludeUnderWeeks > 0 and asm3.i18n.add_days(a.DATEOFBIRTH, 7 * p.excludeUnderWeeks) > dbo.today(): return False
-    if len(p.internalLocations) > 0 and a.ACTIVEMOVEMENTTYPE == 0 and str(a.SHELTERLOCATION) not in p.internalLocations: return False
+    if len(p.internalLocations) > 0 and a.ACTIVEMOVEMENTTYPE is None and str(a.SHELTERLOCATION) not in p.internalLocations: return False
     return True
 
 class PublishCriteria(object):
@@ -370,6 +410,7 @@ class PublishCriteria(object):
     """
     includeCaseAnimals = False
     includeNonNeutered = False
+    includeNonMicrochipped = False
     includeReservedAnimals = False
     includeRetailerAnimals = False
     includeFosterAnimals = False
@@ -428,6 +469,7 @@ class PublishCriteria(object):
         for s in fromstring.split(" "):
             if s == "includecase": self.includeCaseAnimals = True
             if s == "includenonneutered": self.includeNonNeutered = True
+            if s == "includenonmicrochip": self.includeNonMicrochipped = True
             if s == "includereserved": self.includeReservedAnimals = True
             if s == "includeretailer": self.includeRetailerAnimals = True
             if s == "includefosters": self.includeFosterAnimals = True
@@ -461,7 +503,7 @@ class PublishCriteria(object):
             if s.startswith("extension"): self.extension = self.get_str(s)
             if s.startswith("scaleimages"): self.scaleImages = self.get_str(s)
             if s.startswith("thumbnailsize"): self.thumbnailSize = self.get_str(s)
-            if s.startswith("includelocations"): self.internalLocations = self.get_str(s).split(",")
+            if s.startswith("includelocations") and len(self.get_str(s)) > 0 and self.get_str(s) != "null": self.internalLocations = self.get_str(s).split(",")
             if s.startswith("publishdirectory"): self.publishDirectory = self.get_str(s)
             if s.startswith("childadultsplit"): self.childAdultSplit = self.get_int(s)
 
@@ -474,6 +516,7 @@ class PublishCriteria(object):
         s = ""
         if self.includeCaseAnimals: s += " includecase"
         if self.includeNonNeutered: s += " includenonneutered"
+        if self.includeNonMicrochipped: s += " includenonmicrochip"
         if self.includeReservedAnimals: s += " includereserved"
         if self.includeRetailerAnimals: s += " includeretailer"
         if self.includeFosterAnimals: s += " includefosters"
@@ -539,36 +582,57 @@ class AbstractPublisher(threading.Thread):
 
     def checkMappedSpecies(self):
         """
-        Returns True if all species have been mapped for publishers
+        Returns True if all shelter animal species have been mapped for publishers.
         """
         return 0 == self.dbo.query_int("SELECT COUNT(*) FROM species " \
-            "WHERE PetFinderSpecies Is Null OR PetFinderSpecies = ''")
+            "WHERE ID IN (SELECT SpeciesID FROM animal WHERE Archived=0) " \
+            "AND (PetFinderSpecies Is Null OR PetFinderSpecies = '')")
 
     def checkMappedBreeds(self):
         """
-        Returns True if all breeds have been mapped for publishers
+        Returns True if all shelter animal breeds have been mapped for publishers
         """
         return 0 == self.dbo.query_int("SELECT COUNT(*) FROM breed " + \
-            "WHERE PetFinderBreed Is Null OR PetFinderBreed = ''")
+            "WHERE ID IN (SELECT BreedID FROM animal WHERE Archived=0 UNION SELECT Breed2ID FROM animal WHERE Archived=0) " \
+            "AND (PetFinderBreed Is Null OR PetFinderBreed = '')")
 
     def checkMappedColours(self):
         """
-        Returns True if all colours have been mapped for publishers
+        Returns True if all shelter animal colours have been mapped for publishers
         """
         return 0 == self.dbo.query_int("SELECT COUNT(*) FROM basecolour " \
-            "WHERE AdoptAPetColour Is Null OR AdoptAPetColour = ''")
+            "WHERE ID IN (SELECT BaseColourID FROM animal WHERE Archived=0) AND " \
+            "(AdoptAPetColour Is Null OR AdoptAPetColour = '')")
+
+    def csvLine(self, items):
+        """
+        Takes a list of CSV line items and returns them as a comma 
+        separated string, appropriately quoted and escaped.
+        If any items are quoted, the quoting is removed before doing any escaping.
+        """
+        l = []
+        for i in items:
+            if i is None: i = ""
+            # Remove start/end quotes if present
+            if i.startswith("\""): i = i[1:]
+            if i.endswith("\""): i = i[0:-1]
+            # Escape any quotes in the value
+            i = i.replace("\"", "\"\"")
+            # Add quoting
+            l.append("\"%s\"" % i)
+        return ",".join(l)
 
     def getPhotoUrls(self, animalid):
         """
         Returns a list of photo URLs for animalid. The preferred is always first.
         """
         photo_urls = []
-        photos = self.dbo.query("SELECT MediaName FROM media " \
+        photos = self.dbo.query("SELECT ID, Date FROM media " \
             "WHERE LinkTypeID = 0 AND LinkID = ? AND MediaMimeType = 'image/jpeg' " \
             "AND (ExcludeFromPublish = 0 OR ExcludeFromPublish Is Null) " \
             "ORDER BY WebsitePhoto DESC, ID", [animalid])
         for m in photos:
-            photo_urls.append("%s?account=%s&method=dbfs_image&title=%s" % (SERVICE_URL, self.dbo.database, m.MEDIANAME))
+            photo_urls.append("%s?account=%s&method=media_image&mediaid=%s&ts=%s" % (SERVICE_URL, self.dbo.database, m.ID, asm3.i18n.python2unix(m.DATE)))
         return photo_urls
 
     def getPublisherBreed(self, an, b1or2 = 1):
@@ -625,7 +689,7 @@ class AbstractPublisher(threading.Thread):
 
     def replaceMDBTokens(self, dbo, s):
         """
-        Replace MULTIPLE_DATABASE tokens in the string given.
+        Replace MULTIPLE_DATABASE tokens in the string given (redundant)
         """
         s = s.replace("{alias}", dbo.alias)
         s = s.replace("{database}", dbo.database)
@@ -694,29 +758,6 @@ class AbstractPublisher(threading.Thread):
         the one set in the criteria.
         """
         if self.publisherKey == "html":
-            # It's HTML publishing - we have some special rules
-            # If the publishing directory has been overridden, set it
-            if MULTIPLE_DATABASES_PUBLISH_DIR != "":
-                self.publishDir = MULTIPLE_DATABASES_PUBLISH_DIR
-                # Replace any tokens
-                self.publishDir = self.replaceMDBTokens(self.dbo, self.publishDir)
-                self.pc.ignoreLock = True
-                # Validate that the directory exists
-                if not os.path.exists(self.publishDir):
-                    self.setLastError("publishDir does not exist: %s" % self.publishDir)
-                    return
-                # If they've set the option to reupload animal images, clear down
-                # any existing images first
-                if self.pc.forceReupload:
-                    for f in os.listdir(self.publishDir):
-                        if f.lower().endswith(".jpg"):
-                            os.unlink(os.path.join(self.publishDir, f))
-                # Clear out any existing HTML pages
-                for f in os.listdir(self.publishDir):
-                    if f.lower().endswith(".html"):
-                        os.unlink(os.path.join(self.publishDir, f))
-                self.tempPublishDir = False
-                return
             if self.pc.publishDirectory is not None and self.pc.publishDirectory.strip() != "":
                 # The user has set a target directory for their HTML publishing, use that
                 self.publishDir = self.pc.publishDirectory
@@ -750,34 +791,54 @@ class AbstractPublisher(threading.Thread):
         if self.tempPublishDir:
             shutil.rmtree(self.publishDir, True)
 
-    def replaceSmartHTMLEntities(self, s):
+    def replaceSmartQuotes(self, s):
         """
-        Replaces well known "smart" HTML entities with ASCII characters (mainly aimed at smartquotes)
+        Replaces well known "smart" quotes/points with ASCII characters (mainly aimed at smartquotes)
         """
         ENTITIES = {
-            "180":  "'", # spacing acute
-            "8211": "-", # endash
-            "8212": "--", # emdash
-            "8216": "'", # left single quote
-            "8217": "'", # right single quote
-            "8218": ",", # single low quote (comma)
-            "8220": "\"", # left double quotes
-            "8221": "\"", # right double quotes
-            "8222": ",,", # double low quote (comma comma)
-            "8226": "*", # bullet
-            "8230": "...", # ellipsis
-            "8242": "'", # prime (stopwatch)
-            "8243": "\"", # double prime,
-            "10003": "/", # check
-            "10004": "/", # heavy check
-            "10005": "x", # multiplication x
-            "10006": "x", # heavy multiplication x
-            "10007": "x", # ballot x
-            "10008": "x"  # heavy ballot x
+            "\u00b4":  "'", # spacing acute
+            "\u2013": "-", # endash
+            "\u2014": "--", # emdash
+            "\u2018": "'", # left single quote
+            "\u2019": "'", # right single quote
+            "\u201a": ",", # single low quote (comma)
+            "\u201c": "\"", # left double quotes
+            "\u201d": "\"", # right double quotes
+            "\u201e": ",,", # double low quote (comma comma)
+            "\u2022": "*", # bullet
+            "\u2026": "...", # ellipsis
+            "\u2032": "'", # prime (stopwatch)
+            "\u2033": "\"", # double prime,
+            "\u2713": "/", # check
+            "\u2714": "/", # heavy check
+            "\u2715": "x", # multiplication x
+            "\u2716": "x", # heavy multiplication x
+            "\u2717": "x", # ballot x
+            "\u2718": "x"  # heavy ballot x
         }
         for k, v in ENTITIES.items():
-            s = s.replace("&#" + k + ";", v)
+            s = s.replace(k, v)
         return s
+
+    def getLocaleForCountry(self, c):
+        """
+        Some third party sites only accept a locale in their country field rather than
+        a name. This is most common in the US where some shelters have dealings with
+        people over the border in Mexico and Canada.
+        """
+        c2l = {
+            "United States of America": "US",
+            "United States":            "US",
+            "USA":                      "US",
+            "Mexico":                   "MX",
+            "Canada":                   "CA"
+        }
+        if c is None or c == "": return "US" # Assume US as this is only really used by US publishers
+        if len(c) == 2: return c # Already a country code
+        for k in c2l.keys():
+            if c.lower() == k.lower():
+                return c2l[k]
+        return "US" # Fall back to US if no match
 
     def getDescription(self, an, crToBr = False, crToHE = False, crToLF = True, replaceSmart = False):
         """
@@ -786,7 +847,7 @@ class AbstractPublisher(threading.Thread):
         crToBr: Convert line breaks to <br /> tags
         crToHE: Convert line breaks to html entity &#10;
         crToLF: Convert line breaks to LF
-        replaceSmart: Replace smart HTML entities (mainly apostrophes and quotes) with regular ASCII
+        replaceSmart: Replace smart quotes (mainly apostrophes and quotes) with regular ASCII
         """
         # Note: WEBSITEMEDIANOTES becomes ANIMALCOMMENTS in get_animal_data when publisher_use_comments is on
         notes = asm3.utils.nulltostr(an["WEBSITEMEDIANOTES"])
@@ -798,7 +859,7 @@ class AbstractPublisher(threading.Thread):
             notes += sig
         # Escape carriage returns
         cr = ""
-        if crToBr: cr = "<br />"
+        if crToBr: cr = "<br>"
         elif crToHE: cr = "&#10;"
         elif crToLF: cr = "\n"
         notes = notes.replace("\r\n", cr)
@@ -806,7 +867,7 @@ class AbstractPublisher(threading.Thread):
         notes = notes.replace("\n", cr)
         # Smart quotes and apostrophes
         if replaceSmart:
-            notes = self.replaceSmartHTMLEntities(notes)
+            notes = self.replaceSmartQuotes(notes)
         # Escape speechmarks
         notes = notes.replace("\"", "\"\"")
         return notes
@@ -895,16 +956,13 @@ class AbstractPublisher(threading.Thread):
         self.dbo.execute_many("INSERT INTO animalpublished (AnimalID, PublishedTo, SentDate, Extra) VALUES (?,?,?,?)", batch)
 
     def getMatchingAnimals(self, includeAdditionalFields=False):
-        a = get_animal_data(self.dbo, self.pc, include_additional_fields=includeAdditionalFields)
+        a = get_animal_data(self.dbo, self.pc, include_additional_fields=includeAdditionalFields, publisher_key=self.publisherKey)
         self.log("Got %d matching animals for publishing." % len(a))
         return a
 
     def saveFile(self, path, contents):
         try:
-            f = open(path, "w")
-            f.write(contents)
-            f.flush()
-            f.close()
+            asm3.utils.write_text_file(path, contents)
         except Exception as err:
             self.logError(str(err), sys.exc_info())
 
@@ -1030,14 +1088,17 @@ class FTPPublisher(AbstractPublisher):
     def unxssPass(self, s):
         """
         Passwords stored in the config table are subject to XSS escaping, so
-        any >, < or & in the password will have been escaped - turn them back again
+        any >, < or & in the password will have been escaped - turn them back again.
+        Also, many people copy and paste FTP passwords for PetFinder and AdoptAPet
+        and include extra spaces on the end, so strip it.
         """
         s = s.replace("&lt;", "<")
         s = s.replace("&gt;", ">")
         s = s.replace("&amp;", "&")
+        s = s.strip()
         return s
 
-    def openFTPSocket(self):
+    def openFTPSocket(self, ssl = False):
         """
         Opens an FTP socket to the server and changes to the
         root FTP directory. Returns True if all was well or
@@ -1049,15 +1110,15 @@ class FTPPublisher(AbstractPublisher):
         
         try:
             # open it and login
-            self.socket = ftplib.FTP(host=self.ftphost, timeout=15)
+            if ssl:
+                self.socket = ftplib.FTP_TLS(host=self.ftphost, timeout=15)
+            else:
+                self.socket = ftplib.FTP(host=self.ftphost, timeout=15)
             self.socket.login(self.ftpuser, self.ftppassword)
+            if ssl: self.socket.prot_p()
             self.socket.set_pasv(self.passive)
 
             if self.ftproot is not None and self.ftproot != "":
-                # If we had an FTP override, try and create the directory
-                # before we change to it.
-                if MULTIPLE_DATABASES_PUBLISH_FTP is not None:
-                    self.mkdir(self.ftproot)
                 self.chdir(self.ftproot)
 
             return True
@@ -1131,17 +1192,20 @@ class FTPPublisher(AbstractPublisher):
         except Exception as err:
             self.log("mkdir %s: already exists (%s)" % (newdir, err))
 
-    def chdir(self, newdir, fromroot = ""):
-        if not self.pc.uploadDirectly: return
+    def chdir(self, newdir, fromroot):
+        """ Changes FTP folder. 
+            newdir: The folder to change into
+            fromroot: The path to this folder from the root for recovery/reconnection
+            Returns True on success, False for failure """
+        if not self.pc.uploadDirectly: return True
         self.log("FTP chdir to %s" % newdir)
         try:
             self.socket.cwd(newdir)
-            if fromroot == "":
-                self.currentDir = newdir
-            else:
-                self.currentDir = fromroot
+            self.currentDir = fromroot
+            return True
         except Exception as err:
             self.logError("chdir %s: %s" % (newdir, err), sys.exc_info())
+            return False
 
     def delete(self, filename):
         try:
@@ -1187,27 +1251,31 @@ class FTPPublisher(AbstractPublisher):
         if save_log: self.saveLog()
         self.setPublisherComplete()
 
-    def uploadImage(self, a, medianame, imagename):
+    def uploadImage(self, a, mediaid, medianame, imagename):
         """
-        Retrieves image with medianame from the DBFS to the publish
+        Retrieves image with mediaid from the DBFS to the publish
         folder and uploads it via FTP with imagename
         """
         try:
             # Check if the image is already on the server if 
             # forceReupload is off and the animal doesn't
             # have any recently changed images
-            if not self.pc.forceReupload and a["RECENTLYCHANGEDIMAGES"] == 0:
+            if not self.pc.forceReupload and a.RECENTLYCHANGEDIMAGES == 0:
                 if self.existingImageList is None:
                     self.existingImageList = self.lsdir()
                 elif imagename in self.existingImageList:
                     self.log("%s: skipping, already on server" % imagename)
                     return
+            dbfsid = self.dbo.query_int("SELECT DBFSID FROM media WHERE ID=?", [mediaid])
+            if dbfsid == 0:
+                self.log("%s: skipping, no DBFSID link for media id %s" % (imagename, mediaid))
+                return
             imagefile = os.path.join(self.publishDir, imagename)
             thumbnail = os.path.join(self.publishDir, "tn_" + imagename)
-            asm3.dbfs.get_file(self.dbo, medianame, "", imagefile)
+            asm3.dbfs.get_file_id(self.dbo, dbfsid, imagefile)
             self.log("Retrieved image: %d::%s::%s" % ( a["ID"], medianame, imagename ))
             # If scaling is on, do it
-            if self.pc.scaleImages > 1:
+            if str(self.pc.scaleImages) in ( "2", "3", "4", "5", "6", "7" ) or str(self.pc.scaleImages).find("x") > -1:
                 self.scaleImage(imagefile, self.pc.scaleImages)
             # If thumbnails are on, do it
             if self.pc.thumbnails:
@@ -1237,13 +1305,14 @@ class FTPPublisher(AbstractPublisher):
         """
         # The first image is always the preferred
         totalimages = 0
-        animalcode = a["SHELTERCODE"]
-        animalweb = a["WEBSITEMEDIANAME"]
+        animalcode = a.SHELTERCODE
+        animalweb = a.WEBSITEMEDIANAME
+        animalwebid = a.WEBSITEMEDIAID
         if animalweb is None or animalweb == "": return totalimages
         # If we've got HTML entities in our sheltercode, it's going to
         # mess up filenames. Use the animalid instead.
         if animalcode.find("&#") != -1:
-            animalcode = str(a["ID"])
+            animalcode = str(a.ID)
         # Name it sheltercode-1.jpg or sheltercode.jpg if uploadall is off
         imagename = animalcode + ".jpg"
         if self.pc.uploadAllImages:
@@ -1251,7 +1320,7 @@ class FTPPublisher(AbstractPublisher):
         # If we're forcing reupload or the animal has
         # some recently changed images, remove all the images
         # for this animal before doing anything.
-        if self.pc.forceReupload or a["RECENTLYCHANGEDIMAGES"] > 0:
+        if self.pc.forceReupload or a.RECENTLYCHANGEDIMAGES > 0:
             if self.existingImageList is None:
                 self.existingImageList = self.lsdir()
             for ei in self.existingImageList:
@@ -1260,10 +1329,10 @@ class FTPPublisher(AbstractPublisher):
                     self.delete(ei)
         # Save it to the publish directory
         totalimages = 1
-        self.uploadImage(a, animalweb, imagename)
+        self.uploadImage(a, animalwebid, animalweb, imagename)
         # If we're saving a copy with the media ID, do that too
         if copyWithMediaIDAsName:
-            self.uploadImage(a, animalweb, animalweb)
+            self.uploadImage(a, animalwebid, animalweb, animalweb)
         # If upload all is set, we need to grab the rest of
         # the animal's images upto the limit. If the limit is
         # zero, we upload everything.
@@ -1272,16 +1341,17 @@ class FTPPublisher(AbstractPublisher):
             self.log("Animal has %d media files (%d recently changed)" % (len(mrecs), a["RECENTLYCHANGEDIMAGES"]))
             for m in mrecs:
                 # Ignore the main media since we used that
-                if m["MEDIANAME"] == animalweb:
+                if m.ID == animalwebid:
                     continue
                 # Have we hit our limit?
                 if totalimages == limit:
                     return totalimages
                 totalimages += 1
                 # Get the image
-                otherpic = m["MEDIANAME"]
+                otherpic = m.MEDIANAME
+                otherpicid = m.ID
                 imagename = "%s-%d.jpg" % ( animalcode, totalimages )
-                self.uploadImage(a, otherpic, imagename)
+                self.uploadImage(a, otherpicid, otherpic, imagename)
         return totalimages
 
 

@@ -185,6 +185,8 @@ class VetEnvoyUSMicrochipPublisher(AbstractPublisher):
         def xe(s): 
             if s is None: return ""
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        reccountry = an["CURRENTOWNERCOUNTRY"]
+        if reccountry is None or reccountry == "": reccountry = "USA"
         return '<?xml version="1.0" encoding="UTF-8"?>\n' \
             '<MicrochipRegistration ' \
             'version="1.32" ' \
@@ -205,7 +207,7 @@ class VetEnvoyUSMicrochipPublisher(AbstractPublisher):
             '  <LineOther>'+ xe(an["CURRENTOWNERTOWN"]) + '</LineOther>' \
             '  <PostalCode>' + xe(an["CURRENTOWNERPOSTCODE"]) + '</PostalCode>' \
             '  <County_State>'+ xe(an["CURRENTOWNERCOUNTY"]) + '</County_State>' \
-            '  <Country>USA</Country>' \
+            '  <Country>' + reccountry + '</Country>' \
             ' </Address>' \
             ' <DaytimePhone><Number>' + xe(an["CURRENTOWNERWORKTELEPHONE"]) + '</Number><Note/></DaytimePhone>' \
             ' <EveningPhone><Number>' + xe(an["CURRENTOWNERHOMETELEPHONE"]) + '</Number><Note/></EveningPhone>' \
@@ -219,7 +221,7 @@ class VetEnvoyUSMicrochipPublisher(AbstractPublisher):
             '  <Name>' + xe(an["ANIMALNAME"]) + '</Name>' \
             '  <Species>' + self.get_vetenvoy_species(an["SPECIESID"]) + '</Species>' \
             '  <Breed><FreeText>' + xe(an["BREEDNAME"]) + '</FreeText><Code/></Breed>' \
-            '  <DateOfBirth>' + asm3.i18n.format_date("%m/%d/%Y", an["DATEOFBIRTH"]) + '</DateOfBirth>' \
+            '  <DateOfBirth>' + asm3.i18n.format_date(an["DATEOFBIRTH"], "%m/%d/%Y") + '</DateOfBirth>' \
             '  <Gender>' + an["SEXNAME"][0:1] + '</Gender>' \
             '  <Colour>' + xe(an["BASECOLOURNAME"]) + '</Colour>' \
             '  <Markings>' + xe(an["MARKINGS"]) + '</Markings>' \
@@ -228,7 +230,7 @@ class VetEnvoyUSMicrochipPublisher(AbstractPublisher):
             '</PetDetails>' \
             '<MicrochipDetails>' \
             '  <MicrochipNumber>' + xe(an["IDENTICHIPNUMBER"]) + '</MicrochipNumber>' \
-            '  <ImplantDate>' + asm3.i18n.format_date("%m/%d/%Y", an["IDENTICHIPDATE"]) + '</ImplantDate>' \
+            '  <ImplantDate>' + asm3.i18n.format_date(an["IDENTICHIPDATE"], "%m/%d/%Y") + '</ImplantDate>' \
             '  <ImplanterName>' + xe(an["CREATEDBY"]) + '</ImplanterName>' \
             '</MicrochipDetails>' \
             '<ThirdPartyDisclosure>true</ThirdPartyDisclosure>' \

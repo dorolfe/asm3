@@ -41,6 +41,9 @@ class DatabasePostgreSQL(Database):
     def ddl_drop_column(self, table, column):
         return "ALTER TABLE %s DROP COLUMN %s CASCADE" % (table, column)
 
+    def ddl_drop_notnull(self, table, column, existingtype):
+        return "ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL" % (table, column)
+
     def ddl_drop_sequence(self, table):
         return "DROP SEQUENCE IF EXISTS seq_%s" % table
 
@@ -105,6 +108,15 @@ class DatabasePostgreSQL(Database):
         """ Writes a char length """
         return "char_length(%s)" % item
 
+    def sql_ilike(self, expr1, expr2 = "?"):
+        return "%s ILIKE %s" % (expr1, expr2)
+
+    def sql_regexp_replace(self, fieldexpr, pattern="?", replacestr="?"):
+        """ Writes a regexp replace expression that replaces characters matching pattern with replacestr """
+        if pattern != "?": pattern = "'%s'" % pattern
+        if replacestr != "?": replacestr = "'%s'" % self.escape(replacestr)
+        return "REGEXP_REPLACE(%s, %s, %s, 'g')" % (fieldexpr, pattern, replacestr)
+
     def sql_substring(self, fieldexpr, pos, chars):
         """ SQL substring function from pos for chars """
         return "SUBSTRING(%s FROM %s TO %s)" % (fieldexpr, pos, chars)
@@ -112,4 +124,7 @@ class DatabasePostgreSQL(Database):
     def sql_zero_pad_left(self, fieldexpr, digits):
         """ Writes a function that zero pads an expression with zeroes to digits """
         return "TO_CHAR(%s, 'FM%s')" % (fieldexpr, "0"*digits)
+
+    def vacuum(self, tablename=""):
+        self.execute("VACUUM %s" % tablename)
 

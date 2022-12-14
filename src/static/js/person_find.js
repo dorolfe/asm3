@@ -1,9 +1,10 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, edit_header, format, header, html, validate */
 
 $(function() {
 
-    var person_find = {
+    "use strict";
+
+    const person_find = {
 
         render: function() {
             return [
@@ -21,7 +22,7 @@ $(function() {
                 '</td>',
                 '<td>',
                 '<input id="mode" data="mode" type="hidden" value="SIMPLE" />',
-                '<input id="q" data="q" class="asm-textbox" />',
+                '<input id="q" type="search" data="q" class="asm-textbox" />',
                 '</td>',
                 '</tr>',
                 '</table>',
@@ -35,15 +36,7 @@ $(function() {
                 '<td>',
                 '<input id="code" data="code" class="asm-textbox" />',
                 '</td>',
-                '<td>',
-                '<label for="createdby">' + _("Created By") + '</label>',
-                '</td>',
-                '<td>',
-                '<select id="createdby" data="createdby" class="asm-selectbox">',
-                '<option value="">' + _("(anyone)") + '</option>',
-                html.list_to_options(controller.users, "USERNAME", "USERNAME"),
-                '</select>',
-                '</td>',
+                '<td></td>', // EMPTY
                 '</tr>',
                 '<tr>',
                 '<td>',
@@ -94,6 +87,29 @@ $(function() {
                 '<td>',
                 '<input id="phone" data="phone" class="asm-textbox" />',
                 '</td>',
+                '<td>',
+                '<label for="email">' + _("Email") + '</label>',
+                '</td>',
+                '<td>',
+                '<input id="email" data="email" class="asm-textbox" />',
+                '</td>',
+                '</tr>',
+                '<tr>',
+                '<td>',
+                '<label for="createdby">' + _("Created By") + '</label>',
+                '</td>',
+                '<td>',
+                '<select id="createdby" data="createdby" class="asm-selectbox">',
+                '<option value="">' + _("(anyone)") + '</option>',
+                html.list_to_options(controller.users, "USERNAME", "USERNAME"),
+                '</select>',
+                '</td>',
+                '<td>',
+                '<label for="createdsince">' + _("Created Since") + '</label>',
+                '</td>',
+                '<td>',
+                '<input id="createdsince" data="createdsince" type="text" class="asm-textbox asm-datebox" />',
+                '</td>',
                 '</tr>',
                 '<tr>',
                 '<td>',
@@ -105,13 +121,7 @@ $(function() {
                 html.list_to_options(controller.jurisdictions, "ID", "JURISDICTIONNAME"),
                 '</select>',
                 '</td>',
-                '<td>',
-                '<label for="email">' + _("Email") + '</label>',
-                '</td>',
-                '<td>',
-                '<input id="email" data="email" class="asm-textbox" />',
-                '</td>',
-                '</tr>',
+                '<td></td>', // EMPTY
                 '<tr>',
                 '<td>',
                 '<label for="comments">' + _("Comments contain") + '</label>',
@@ -155,7 +165,7 @@ $(function() {
 
         bind: function() {
             // Switch to simple search criteria
-            var simpleMode = function() {
+            const simple_mode = function() {
                 $("#mode").val("SIMPLE");
                 $("#asm-search-selector-advanced").removeClass("asm-link-disabled");
                 $("#asm-search-selector-simple").addClass("asm-link-disabled");
@@ -167,7 +177,7 @@ $(function() {
             };
 
             // Switch to advanced search criteria
-            var advancedMode = function() {
+            const advanced_mode = function() {
                 $("#mode").val("ADVANCED");
                 $("input[data='q']").val("");
                 $("#asm-search-selector-simple").removeClass("asm-link-disabled");
@@ -181,11 +191,11 @@ $(function() {
 
             // Handle switching between modes via the links
             $("#asm-search-selector-simple").click(function() {
-                simpleMode();
+                simple_mode();
             });
 
             $("#asm-search-selector-advanced").click(function() {
-                advancedMode();
+                advanced_mode();
             });
 
             // Load the person flag options
@@ -212,10 +222,10 @@ $(function() {
             $("#asm-criteria-simple").hide();
             $("#asm-criteria-advanced").hide();
             if (config.bool("AdvancedFindOwner")) {
-                advancedMode();
+                advanced_mode();
             }
             else {
-                simpleMode();
+                simple_mode();
             }
         },
 

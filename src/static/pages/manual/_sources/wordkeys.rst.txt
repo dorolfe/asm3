@@ -24,8 +24,15 @@ OrganisationPostcode / OrganizationZipcode
     The shelter's zip or postal code
 OrganisationTelephone / OrganizationTelephone
     The shelter's telephone number
+OrganisationEmail / OrganizationEmail
+   The shelter's email address
 Date
     Today's date
+Signature
+    A signature:placeholder image for inserting a signature later (default
+    150px wide)
+Signature100 /Signature150 / Signature200 / Signature300
+    Controls the max width of the signature while retaining aspect ratio
 Username
     The current user generating the document
 UserRealname
@@ -33,7 +40,10 @@ UserRealname
 UserEmailAddress
     The email address of the user generating the document
 UserSignature
-    An image tag containing the electronic signature of the user generating the document
+    An image tag containing the electronic signature of the user generating the
+    document (default 150px wide)
+UserSignature100 / UserSignature150 / UserSignature200 / UserSignature300
+    Controls the max width of the signature while retaining aspect ratio
 UserSignatureSrc
     Just the src attribute value so the signature can be applied to your own
     image tag (eg: to override size)
@@ -57,7 +67,11 @@ DocumentImgThumbSrc
     Just the src attribute value for a thumbnail link to the preferred document image.
 DocumentQRLink
     An <img> tag containing a link to QR code that references a URL to the
-    animal's record within ASM.
+    animal's record within ASM. Supports the pixel height suffix.
+DocumentQRShare
+    An <img> tag containing a link to a QR code that references a URL to the
+    "share a link to this animal" public page for the animal. Supports the pixel height
+    suffix, eg: <<DocumentQRShare500>>
 ShelterCode
     The animal's shelter code 
 ShortShelterCode
@@ -65,7 +79,7 @@ ShortShelterCode
 Age
     The animal's age in readable form (eg: “5 years and 6 months”) 
 Description / AnimalComments
-    The animal description box 
+    The animal description box. Use DescriptionBR or AnimalCommentsBR to retain line breaks.
 HealthProblems
     The health problems field 
 LitterID / AcceptanceNumber
@@ -197,6 +211,8 @@ PickupAddress
     The pickup address
 PickupLocationName
     The pickup location set on the animal
+AnimalJurisdiction
+    The animal's jurisdiction
 CoordinatorName
     The name of the adoption coordinator
 CoordinatorHomePhone
@@ -253,6 +269,12 @@ OriginalOwner Additional Fields
     Additional fields on the original owner can be accessed via OriginalOwnerFIELDNAME
 CurrentOwnerName
     The name of the animal's current owner (fosterer or adopter)
+CurrentOwnerTitle
+    The title of the current owner
+CurrentOwnerFirstname / CurrentOwnerForenames 
+    The first name(s) of the current owner
+CurrentOwnerLastname / CurrentOwnerSurname
+    The last name of the current owner
 CurrentOwnerAddress 
     Current owner's address
 CurrentOwnerTown 
@@ -275,6 +297,12 @@ CurrentOwner Additional Fields
     Additional fields on the current owner can be accessed via CurrentOwnerFIELDNAME
 ReservedOwnerName
     The name of the person with an active reserve on the animal
+ReservedOwnerTitle
+    The title of the reserving person
+ReservedOwnerFirstname / ReservedOwnerForenames
+    The first name of the reserving person
+ReservedOwnerLastname / ReservedOwnerSurname
+    The last name of the reserving person
 ReservedOwnerAddress 
     Reserved owner's address
 ReservedOwnerTown 
@@ -365,6 +393,14 @@ DisplayDogsIfBadWith
     Outputs "Dogs" if this animal is bad with dogs
 DisplayChildrenIfBadWith
     Outputs "Children" if this animal is bad with children
+DisplayXIfCat / DisplayXIfDog / DisplayXIfRabbit / DisplayXIfMale / DisplayXIfFemale
+    Outputs an X if this animal is a cat, dog, rabbit, male or female (used for form boxes)
+DisplayXIfPedigree / DisplayXIfCrossbreed
+    Outputs an X if this animal is a pure or crossbreed
+DisplayXIfNeutered / DisplayXIfFixedMale / DisplayXIfFixedFemale
+    Outputs an X if this animal is neutered/spayed
+DisplayXIfNotNeutered / DisplayXIfEntireMale / DisplayXIfEntireFemale
+    Outputs an X if this animal is not neutered/spayed
 EntryCategory
     The entry category of the animal 
 ReasonForEntry
@@ -391,6 +427,8 @@ MostRecentEntryCategory
 TimeOnShelter
     A readable string showing the time the animal has spent on the shelter
     (from the last time it entered), eg: 4 weeks. 
+DaysOnShelter
+    The number of days the animal has spent on the shelter
 NoTimesReturned
     The number of times the animal has been returned to the shelter 
 AdoptionStatus
@@ -413,6 +451,8 @@ AnimalAtRetailer
     "Yes" if the animal is currently located at a retailer
 AnimalIsAdoptable
     "Yes" if the animal is available for adoption
+DateAvailableForAdoption
+    The date animal was first made available for adoption in its current stay in care.
 AnimalOnFoster
     "Yes" if the animal is in a foster home
 AnimalOnShelter
@@ -449,6 +489,8 @@ VaccinationBatch
     The batch number from the vaccination adminstered
 VaccinationManufacturer
     The manufacturer of the vaccine
+VaccinationRabiesTag
+    The rabies tag number accompanying this vaccine
 VaccinationCost
     The cost of this vaccine
 VaccinationComments
@@ -572,7 +614,7 @@ Payment Keys
 
 If you are creating a document from the animal or person records, then the same
 rules apply as for vaccinations and medical records when accessing payments.
-payments. The Recent keyword looks for payments that have been received and Due 
+The Recent keyword looks for payments that have been received and Due 
 for non-received payments.
 
 However, if you create an invoice/receipt document from the payment tab of a
@@ -594,8 +636,12 @@ PaymentDate
     The date the payment was received 
 PaymentDateDue
     If this is a recurring payment, the date it is due 
-PaymentAmount 
-    The total amount of the payment
+PaymentGross
+    The total gross amount of the payment, including any fees and taxes
+PaymentFee
+    Any transaction fees incurred on the payment
+PaymentAmount / PaymentNet
+    The net amount of the payment, excludes any fees and taxes
 PaymentQuantity
     (if quantities are enabled) The number of items the payment covers
 PaymentUnitPrice
@@ -622,16 +668,24 @@ PaymentAnimalShortCode
     The short shelter code of the animal the payment is linked to
 PaymentPersonName
     The name of the person the payment is linked to
+PaymentPersonAddress
+   The address of the person the payment is linked to
+PaymentPersonCity / PaymentPersonTown
+   The city of the person the payment is linked to
+PaymentPersonState / PaymentPersonCounty
+   The state of the person the payment is linked to
+PaymentPersonZipcode / PaymentPersonPostcode
+   The zipcode of the person the payment is linked to
 PaymentTotalDue
-    The total of all selected payments that have a due date and no received date
-PaymentTotalReceived
-    The total of all selected payments that have a received date
-PaymenTotalTaxRate / PaymentTotalVATRate
+    The gross total of all selected payments that have a due date and no received date
+PaymentTotalNet / PaymentTotalReceived
+    The net total of all selected payments that have a received date
+PaymentTotalTaxRate / PaymentTotalVATRate
     The highest rate of tax applied by any of the selected payments
 PaymentTotalTax / PaymentTotalVAT
     The total of all sales tax/VAT/GST on the selected payments
-PaymentTotal
-    PaymentTotalReceived + PaymentTotalTax
+PaymentTotal / PaymentTotalGross
+    The gross total of all received payments
 
 Transport Keys
 --------------
@@ -654,7 +708,7 @@ TransportType
    The type of transport
 TransportDriveName
    The transport driver if known
-TransportPickupDateTime
+TransportPickupDateTime / TransportPickupDate / TransportPickupTime
    The date and time of the pickup
 TransportPickupName
    The person the transport is picking up from if known
@@ -678,7 +732,7 @@ TransportPickupCellPhone / TransportPickupMobilePhone
    The mobile phone number of the pickup contact
 TransportDropoffName
    The person the transport is taking the animal to if known
-TransportDropoffDateTime
+TransportDropoffDateTime / TransportDropoffDate / TransportDropoffTime
    The date and time of the dropoff
 TransportDropoffAddress
    The dropoff address
@@ -801,6 +855,8 @@ MovementType
     The movement type (eg: Adoption, Foster, Transfer, etc) 
 MovementNumber
     The movement number 
+MovementComments
+    The comments from the movement
 InsuranceNumber
     If your shelter insures animals as they are adopted, the insurance number 
 ReservationDate
@@ -815,6 +871,28 @@ ReturnNotes
     The reason for return notes
 ReturnReason
     The return category
+ReturnedByName
+    The name of the person who returned the animal
+ReturnedByFirstname / ReturnedByForenames 
+    The first name(s) of the person who returned the animal
+ReturnedByLastname / ReturnedBySurname
+    The last name of the person who returned the animal
+ReturnedByAddress 
+    The returner's address
+ReturnedByTown 
+    (ReturnedByCity for US users) 
+ReturnedByCounty 
+    (ReturnedByState for US users) 
+ReturnedByPostcode 
+    (ReturnedByZipcode for US users) 
+ReturnedByHomePhone 
+    Returner's home phone number
+ReturnedByWorkPhone 
+    Returner's work phone number
+ReturnedByMobilePhone 
+    Returner's cell/mobile phone number
+ReturnedByEmail 
+    Returner's email address
 AdoptionDate
     The date of the adoption (if this is an adoption, alias for MovementDate)
 FosteredDate
@@ -844,17 +922,19 @@ Person Keys
 Person keys are available for documents generated from the person and movement
 screens, they are also available for documents generated from the payment 
 and licence tabs as well as lost animal, found animal and waiting list.
+For documents generated from the animal screen, the person will be chosen in
+the following order: Latest movement on file, latest reservation on file, 
+current owner (if the animal is non-shelter)
 Log keys are available for people, but prefixed with PersonLog instead of just Log.
 
-
-OwnerTitle 
+Title / OwnerTitle
     The person's title
-OwnerInitials 
+Initials / OwnerInitials 
     The person's initials
-OwnerForenames 
-    (OwnerFirstNames for US users) 
-OwnerSurname 
-    (OwnerLastName for US users) 
+Forenames / OwnerForenames 
+    (Firstnames / OwnerFirstNames for US users) 
+Surname / OwnerSurname 
+    (Lastname / OwnerLastName for US users) 
 OwnerFlags
     A list of the flags assigned to a person, separated by commas.
 OwnerComments 
@@ -869,6 +949,8 @@ OwnerID
     The ID of the person record
 IDCheck
     “Yes” if the owner has been homechecked 
+HomeCheckedDate
+    The date this person was homechecked
 HomeCheckedByName
     The name of the person who homechecked this person
 HomeCheckedByEmail
@@ -881,18 +963,24 @@ OwnerLastChangedDate
     The date this person record was last changed
 OwnerLastChangedBy 
     (OwnerLastChangedByName) - The person who last changed this person record
-OwnerAddress
+Address / OwnerAddress
     The person's address
-OwnerName 
+Name / OwnerName 
     The person's display name in the selected system display format
-OwnerTown 
-    (OwnerCity for US users) 
-OwnerCounty 
-    (OwnerState for US users) 
-OwnerPostcode 
-    (OwnerZipcode for US users) 
-Jurisdiction
+Town / OwnerTown 
+    (City / OwnerCity for US users) 
+County / OwnerCounty 
+    (State / OwnerState for US users) 
+Postcode / OwnerPostcode 
+    (Zipcode / OwnerZipcode for US users) 
+Country / OwnerCountry
+    The country this person lives in
+OwnerLookingFor
+    A summary of the "Looking for" slider on the person's record
+OwnerJurisdiction
     The person's jurisdiction
+OwnerSite
+    The site this person is linked to
 WorkTelephone 
     The person's work telephone number
 MobileTelephone 
@@ -935,34 +1023,34 @@ FineDueDate
 FinePaidDate
     The date the fine was paid
 
-Traploan Keys
--------------
+Equipment Loan Keys
+-------------------
 
-The same rules apply as for vaccinations, but for accessing trap loans. Each
-loan is indexed with a number for ascending (eg: TrapTypeName1), LastX for
-descending (eg: TrapTypeNameLast1) and with the type name for the most recent
-loan of that type for the person (eg: TrapLoanDateCat). 
+The same rules apply as for vaccinations, but for accessing equipment loans. Each
+loan is indexed with a number for ascending (eg: EquipmentTypeName1), LastX for
+descending (eg: EquipmentTypeNameLast1) and with the type name for the most recent
+loan of that type for the person (eg: EquipmentLoanDateCat). 
 
 The Recent keyword returns returned trap loan records where Due is unreturned.
 
 The fields are:
 
-TrapTypeName
-    The type of trap being loaned
-TrapLoanDate
-    The date the trap was loaned
-TrapDepositAmount
+EquipmentTypeName
+    The type of equipment being loaned
+EquipmentLoanDate
+    The date the equipment was loaned
+EquipmentDepositAmount
     The amount of deposit on the loan
-TrapDepositReturnDate
+EquipmentDepositReturnDate
     The date the deposit was returned
-TrapNumber
-    The trap number of the trap being loaned
-TrapReturnDueDate
-    The date the trap is due for return
-TrapReturnDate
-    The date the trap was returned
-TrapComments
-    Any comments on the traploana
+EquipmentNumber
+    The equipment number of the trap being loaned
+EquipmentReturnDueDate
+    The date the equipment is due for return
+EquipmentReturnDate
+    The date the equipment was returned
+EquipmentComments
+    Any comments on the equipment loan
 
 Licence Keys
 ------------
@@ -986,6 +1074,29 @@ LicenceExpires
     The date the licence expires
 LicenceComments
     Any comments from the licence record
+
+Voucher Keys
+------------
+
+Voucher keys are only available for documents generated for a single voucher
+under the voucher tab or the voucher book. Keys for the person the voucher
+has been issued to are also present and if the licence is linked to an animal,
+animal keys are also present.
+
+VoucherTypeName
+   The type of voucher
+VoucherCode
+   The voucher's unique code
+VoucherValue
+   The amount the voucher can be redeemed for if appropriate
+VoucherIssued
+   The date the voucher was issued
+VoucherExpires
+   The date the voucher expires
+VoucherRedeemed
+   The date the voucher was redeemed/used
+VoucherComments
+   Any comments about the voucher
 
 Incident Keys
 -------------
@@ -1023,7 +1134,7 @@ CallerWorkTelephone
 CallerMobileTelephone / CallerCellTelephone
     The caller's mobile number
 CallNotes
-    Any notes about the call
+    Any notes about the call. Use CallNotesBR to retain line breaks.
 CallTaker
     The username of the staff member that took the call
 DispatchDate
@@ -1040,6 +1151,8 @@ DispatchPostcode / DispatchZipcode
     The zipcode an ACO was dispatched to
 PickupLocationName
     The pickup location set on the incident
+IncidentJurisdiction
+    The incident jurisdiction
 RespondedDate
     The date the incident was attended by an ACO
 RespondedTime
@@ -1127,12 +1240,22 @@ ShelterCode
     The animal's shelter code
 ShortCode
     The animal's short shelter code
+MicrochipNumber
+    The animal's microchip number
 AgeGroup
     The animal's age group
 AnimalTypeName
     The type of animal
 SpeciesName
     The species of animal
+Sex
+    The sex of the animal
+Size
+    The size of the animal
+BaseColorName / BaseColourName
+    The color of the animal
+CoatType
+    The coat type of the animal
 DateBroughtIn
     The date the animal entered the shelter
 DeceasedDate
@@ -1238,7 +1361,7 @@ CanAffordDonation
     Yes/No - whether the person can afford to make a donation
 Urgency
     An urgency rating for this waiting list item
-WaitingListComments
+Comments
     Any comments on this waiting list entry
 DocumentImgLink
     A photo of the animal if one exists. 200/300/400/500 can also be suffixed
@@ -1293,9 +1416,8 @@ These are special keys that insert a table into your document that contains the
 complete data from a tab. 
 
 These keys do not allow the flexibility of formatting that the other keys
-offer, but they do offer a simple way of putting an animal's medical history
-into a document without having to create a table containing many "just in case"
-placeholder keys. 
+offer, but they do offer a simple way of putting bulk data into a document without 
+having to create a table containing many "just in case" placeholder keys. 
 
 They will also dynamically expand the document according to how many records
 there are.  Records are output in ascending order of date.
@@ -1308,4 +1430,15 @@ AnimalMedicals
    Inserts a table containing all of the animal's medical treatments
 AnimalLogs
    Inserts a table containing all of the animal's log entries
+AnimalLogsTYPE
+   Inserts a table containing all of the animal's log entries of TYPE
+IncidentLogs
+   Inserts a table containing all of the incident's log entries
+LitterMates
+   Inserts a table containing a list of the animal's littermates
+ActiveLitterMates
+   Inserts a table containing a list of the animal's littermates (only those still in care)
+MovementPayments
+   Inserts a table containing all of the payments for the active movement for
+   the person, animal or movement the document is being generated for.
 

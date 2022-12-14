@@ -7,6 +7,9 @@ DELETE = 2
 MOVE = 3
 LOGIN = 4
 LOGOUT = 5
+VIEW_RECORD = 6
+VIEW_REPORT = 7
+EMAIL = 8
 
 # How many days to retain records in the audittrail table before removing them
 RETAIN_AUDIT_RECORDS = -182
@@ -93,7 +96,7 @@ def map_diff(row1, row2, ref = []):
         if rv in row1:
             s += str(row1[rv]) + " "
     s += ">>> "
-    for k, v in row1.items():
+    for k in row1.keys():
         if k in row2:
             if str(row1[k]) != str(row2[k]):
                 s += k + ": " + str(row1[k]) + " ==> " + str(row2[k]) + ", "
@@ -127,6 +130,15 @@ def delete_rows(dbo, username, tablename, condition):
         # otherwise, stuff all the deleted rows into one delete action
         action(dbo, DELETE, username, tablename, 0, "", str(rows))
 
+def get_deletions(dbo):
+    """ Returns all available records for undeleting """
+    rows = dbo.query("SELECT ID, TableName, DeletedBy, Date, IDList FROM deletion WHERE TableName IN " \
+        "('animal', 'owner', 'animalcontrol', 'customreport', 'dbfs', 'onlineformincoming', 'waitinglist', " \
+        "'animallost', 'animalfound', 'templatedocument', 'templatehtml')")
+    for r in rows:
+        r["KEY"] = "%s:%s" % (r.TABLENAME, r.ID)
+    return rows
+
 def insert_deletions(dbo, username, tablename, condition):
     rows = dbo.query("SELECT * FROM %s WHERE %s" % (tablename, condition))
     if len(rows) > 0 and "ID" in rows[0]:
@@ -144,17 +156,41 @@ def insert_deletion(dbo, username, tablename, linkid, parentlinks, restoresql):
         "DeletedBy":    username,
         "Date":         dbo.now(),
         "IDList":       parentlinks,
-        "RestoreSQL":   restoresql
+        "*RestoreSQL":   restoresql
     }, generateID=False, writeAudit=False)
+
+def undelete(dbo, did, tablename):
+    """ Undeletes a top level record with deletion ID did from tablename """
+    d = dbo.first_row(dbo.query("SELECT * FROM deletion WHERE ID=? AND TableName=?", [did, tablename]))
+    if d is None: raise KeyError("Deletion ID %s.%s does not exist" % (tablename, did))
+    # Undelete any associated rows first
+    for x in dbo.query("SELECT * FROM deletion WHERE IDList LIKE ?", [ "%%%s=%s%%" % (d.TABLENAME, d.ID) ]):
+        asm3.al.debug("undelete ID %s from %s: %s" % (x.ID, x.TABLENAME, x.RESTORESQL), "audit.undelete", dbo)
+        try:
+            dbo.execute(x.RESTORESQL)
+        except:
+            pass # ignore errors in satellite rows, they will be logged by dbo.execute
+    # Now the main record
+    asm3.al.debug("undelete ID %s from %s: %s" % (d.ID, d.TABLENAME, d.RESTORESQL), "audit.undelete", dbo)
+    dbo.execute(d.RESTORESQL)
 
 def move(dbo, username, tablename, linkid, parentlinks, description):
     action(dbo, MOVE, username, tablename, linkid, parentlinks, description)
 
-def login(dbo, username, remoteip = ""):
-    action(dbo, LOGIN, username, "users", 0, "", "login from %s" % remoteip)
+def login(dbo, username, remoteip = "", useragent = ""):
+    action(dbo, LOGIN, username, "users", 0, "", "login from %s [%s]" % (remoteip, useragent))
 
-def logout(dbo, username, remoteip = ""):
-    action(dbo, LOGOUT, username, "users", 0, "", "logout from %s" % remoteip)
+def logout(dbo, username, remoteip = "", useragent = ""):
+    action(dbo, LOGOUT, username, "users", 0, "", "logout from %s [%s]" % (remoteip, useragent))
+
+def view_record(dbo, username, tablename, linkid, description):
+    action(dbo, VIEW_RECORD, username, tablename, linkid, "", description)
+
+def view_report(dbo, username, reportname, criteria):
+    action(dbo, VIEW_REPORT, username, "customreport", 0, "", "%s - %s" % (reportname, criteria))
+
+def email(dbo, username, fromadd, toadd, ccadd, bccadd, subject, body):
+    action(dbo, EMAIL, username, "email", 0, "", "from: %s, to: %s, cc: %s, bcc: %s, subject: %s - %s" % (fromadd, toadd, ccadd, bccadd, subject, body))
 
 def action(dbo, action, username, tablename, linkid, parentlinks, description):
     """

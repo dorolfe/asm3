@@ -1,7 +1,4 @@
-# Italian translation for sheltermanager
-# Copyright (c) 2009 Rosetta Contributors and Canonical Ltd 2009
-# This file is distributed under the same license as the sheltermanager package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2009.
+
 msgid ""
 msgstr ""
 "Project-Id-Version: sheltermanager\n"
@@ -16,8 +13,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 2.2.1\n"
-"X-Launchpad-Export-Date: 2015-03-02 05:17+0000\n"
-"X-POOTLE-MTIME: 1470528449.000000\n"
+
 
 #: options.js
 msgid " days."
@@ -5467,7 +5463,7 @@ msgstr ""
 
 #: main.js
 msgid ""
-"Go the lookup data screen and add/remove breeds, species and animal types "
+"Go to the lookup data screen and add/remove breeds, species and animal types "
 "according to the animals your shelter deals with."
 msgstr ""
 "Vai alla pagina ricerca dati e aggiungere/togliere razze, specie e tipi "
@@ -5475,14 +5471,14 @@ msgstr ""
 
 #: main.js
 msgid ""
-"Go the options screen and set your shelter's contact details and other "
+"Go to the options screen and set your shelter's contact details and other "
 "settings."
 msgstr ""
 "Vai alla schermata opzioni e imposta i dettagli del tuo contatto shelter e "
 "altre impostazioni."
 
 #: main.js
-msgid "Go the system users screen and add user accounts for your staff."
+msgid "Go to the system users screen and add user accounts for your staff."
 msgstr ""
 "Vai alla pagina utenti sistema e aggiungere gli account utenti dello staff."
 

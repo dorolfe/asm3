@@ -1,16 +1,21 @@
 
 import asm3.al
-import asm3.cachemem
+import asm3.cachedisk
 import asm3.db
 from asm3.sitedefs import MULTIPLE_DATABASES, MULTIPLE_DATABASES_TYPE
 
 import datetime
 import re
 import os, sys
-import web
+
+import web062 as web
+
+# The maximum number of emails allowed to be sent in one go through the
+# the sheltermanager.com email server
+MAX_EMAILS = 1500
 
 # Regex to remove invalid chars from an entered database
-INVALID_REMOVE = re.compile('[\/\.\*\?\ ]')
+INVALID_REMOVE = re.compile(r'[\/\.\*\?\ ]')
 
 try:
     sys.path.append("/root/asmdb")
@@ -35,11 +40,11 @@ def get_account(alias):
     if len(alias) > 20: return None     
     TTL = 86400 * 2
     cachekey = "smcom_dbinfo_%s" % alias
-    a = asm3.cachemem.get(cachekey)
+    a = asm3.cachedisk.get(cachekey, "smcom")
     if a is None:
         a = smcom_client.get_account(alias)
         if a is not None and "user" in a:
-            asm3.cachemem.put(cachekey, a, TTL)
+            asm3.cachedisk.put(cachekey, "smcom", a, TTL)
     return a
 
 def get_database_info(alias):
@@ -61,9 +66,16 @@ def get_database_info(alias):
         dbo.database = "FAIL"
         return dbo
 
-    dbo.database = str(a["user"])
+    dbo.database = a["user"]
     dbo.username = dbo.database
     dbo.password = dbo.database
+
+    # dbo.alias is used in particular when sending emails to make a friendlier
+    # bounce address. If the account has one, set it here. We used to just set
+    # this on login above, but if they logged in with their account number the 
+    # alias was not set.
+    if a["alias"] != "":
+        dbo.alias = a["alias"]
 
     # Is this sm.com account disabled or removed from the server?
     if a["expired"] or a["archived"]:
@@ -87,6 +99,20 @@ def get_expiry_date(dbo):
         return expiry
     except:
         return None
+
+def get_login_url(dbo):
+    """
+    Returns the login url for this account
+    """
+    return "https://sheltermanager.com/login/%s" % dbo.alias or dbo.database
+
+def get_reports():
+    """
+    Returns the reports.txt file
+    """
+    with open("/root/asmdb/reports.txt", "r", encoding="utf-8") as f:
+        s = f.read()
+    return s
 
 def go_smcom_my(dbo):
     """

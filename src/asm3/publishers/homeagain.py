@@ -120,11 +120,10 @@ class HomeAgainPublisher(AbstractPublisher):
                             # Mark success in the log
                             self.logSuccess("Processed: %s: %s (%d of %d)" % ( an["SHELTERCODE"], an["ANIMALNAME"], anCount, len(animals)))
                             wassuccess = True
-                            break
 
                     # If we saw an account not found message, there's no point sending 
                     # anything else as they will all trigger the same error
-                    if str(r["headers"]).find("54101") != -1 and str(r["headers"]).find("Account Not Found") != -1:
+                    if str(r["headers"]).find("54101") != -1:
                         self.logError("received HomeAgain 54101 'account not found' response header - abandoning run and disabling publisher")
                         asm3.configuration.publishers_enabled_disable(self.dbo, "veha")
                         break
@@ -158,6 +157,10 @@ class HomeAgainPublisher(AbstractPublisher):
         def xe(s): 
             if s is None: return ""
             return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        reccountry = an.CURRENTOWNERCOUNTRY
+        if reccountry is None or reccountry == "": reccountry = "USA"
+        forenames = an.CURRENTOWNERFORENAMES
+        if forenames is None or forenames == "": forenames = "org" # organisation
         return '<?xml version="1.0" encoding="UTF-8"?>\n' \
             '<MicrochipRegistration ' \
             'version="1.32" ' \
@@ -171,14 +174,14 @@ class HomeAgainPublisher(AbstractPublisher):
             '<OwnerDetails>' \
             ' <Salutation>' + xe(an["CURRENTOWNERTITLE"]) + '</Salutation>' \
             ' <Initials>' + xe(an["CURRENTOWNERINITIALS"]) + '</Initials>' \
-            ' <Forenames>' + xe(an["CURRENTOWNERFORENAMES"]) + '</Forenames>' \
+            ' <Forenames>' + xe(forenames) + '</Forenames>' \
             ' <Surname>' + xe(an["CURRENTOWNERSURNAME"]) + '</Surname>' \
             ' <Address>' \
             '  <Line1>'+ xe(an["CURRENTOWNERADDRESS"]) + '</Line1>' \
-            '  <LineOther>'+ xe(an["CURRENTOWNERTOWN"]) + '</LineOther>' \
-            '  <PostalCode>' + xe(an["CURRENTOWNERPOSTCODE"]) + '</PostalCode>' \
+            '  <TownCity>'+ xe(an["CURRENTOWNERTOWN"]) + '</TownCity>' \
             '  <County_State>'+ xe(an["CURRENTOWNERCOUNTY"]) + '</County_State>' \
-            '  <Country>USA</Country>' \
+            '  <PostalCode>' + xe(an["CURRENTOWNERPOSTCODE"]) + '</PostalCode>' \
+            '  <Country>' + xe(reccountry) + '</Country>' \
             ' </Address>' \
             ' <DaytimePhone><Number>' + xe(an["CURRENTOWNERWORKTELEPHONE"]) + '</Number><Note/></DaytimePhone>' \
             ' <EveningPhone><Number>' + xe(an["CURRENTOWNERHOMETELEPHONE"]) + '</Number><Note/></EveningPhone>' \
@@ -192,7 +195,7 @@ class HomeAgainPublisher(AbstractPublisher):
             '  <Name>' + xe(an["ANIMALNAME"]) + '</Name>' \
             '  <Species>' + self.get_homeagain_species(an["SPECIESID"]) + '</Species>' \
             '  <Breed><FreeText>' + xe(an["BREEDNAME"]) + '</FreeText><Code/></Breed>' \
-            '  <DateOfBirth>' + asm3.i18n.format_date("%m/%d/%Y", an["DATEOFBIRTH"]) + '</DateOfBirth>' \
+            '  <DateOfBirth>' + asm3.i18n.format_date(an["DATEOFBIRTH"], "%m/%d/%Y") + '</DateOfBirth>' \
             '  <Gender>' + an["SEXNAME"][0:1] + '</Gender>' \
             '  <Colour>' + xe(an["BASECOLOURNAME"]) + '</Colour>' \
             '  <Markings>' + xe(an["MARKINGS"]) + '</Markings>' \
@@ -201,7 +204,7 @@ class HomeAgainPublisher(AbstractPublisher):
             '</PetDetails>' \
             '<MicrochipDetails>' \
             '  <MicrochipNumber>' + xe(an["IDENTICHIPNUMBER"]) + '</MicrochipNumber>' \
-            '  <ImplantDate>' + asm3.i18n.format_date("%m/%d/%Y", an["IDENTICHIPDATE"]) + '</ImplantDate>' \
+            '  <ImplantDate>' + asm3.i18n.format_date(an["IDENTICHIPDATE"], "%m/%d/%Y") + '</ImplantDate>' \
             '  <ImplanterName>' + xe(an["CREATEDBY"]) + '</ImplanterName>' \
             '</MicrochipDetails>' \
             '<ThirdPartyDisclosure>true</ThirdPartyDisclosure>' \

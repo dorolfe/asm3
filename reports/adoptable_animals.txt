@@ -2,7 +2,7 @@ Adoptable Animals
 ###
 Inventories
 ###
-33300/Any
+34501/Any rev02
 ###
 List of adoptable animals with thumbnails.
 ###
@@ -19,7 +19,7 @@ select  a.ID          as AnimalID,
         (SELECT Name FROM lksyesno WHERE ID = a.Neutered) AS NeuteredName,
         (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithCats) AS IsGoodWithCatsName,
         (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithDogs) AS IsGoodWithDogsName,
-        (SELECT Name FROM lksynun WHERE ID = a.IsGoodWithChildren) AS IsGoodWithChildrenName,
+        (SELECT Name FROM lksynunk WHERE ID = a.IsGoodWithChildren) AS IsGoodWithChildrenName,
         (SELECT Name FROM lksynun WHERE ID = a.IsHouseTrained) AS IsHouseTrainedName,
         a.DisplayLocation,
         a.AnimalComments,
@@ -29,8 +29,7 @@ left join lksize  sz on a.Size      = sz.ID
 left join lksex   sx on a.Sex       = sx.ID
 left join species sp on a.SpeciesID = sp.ID
 where Archived = 0
-  and IsNotAvailableForAdoption = 0
-  and HasTrialAdoption = 0
+  and Adoptable=1
 order by SpeciesName, AnimalName
 ###
 $$HEADER

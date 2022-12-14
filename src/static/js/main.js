@@ -1,27 +1,32 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
 /*global $, jQuery, _, asm, common, config, controller, dlgfx, edit_header, format, header, html, validate, Path */
 
 $(function() {
 
-    var main = {
+    "use strict";
+
+    const main = {
 
         render_active_users: function() {
-            var s = "", loggedin = _("Active users: {0}"), userlist = [];
+            let s = "", loggedin = _("Active users: {0}"), userlist = [];
             $.each(controller.activeusers.split(","), function(i, u) {
-                var since = u.split("=")[1], user = u.split("=")[0];
+                let since = u.split("=")[1], user = u.split("=")[0];
                 userlist.push("<a class='activeuser' title='" + html.title(since) + "' href='#'>" + user + "</a>");
             });
-            s += '<table width="100%" style="font-size: 0.75em; border-top: 1px solid #aaa"><tr><td align="left">' + common.substitute(loggedin, { "0": userlist.join(", ")}) + '</td>';
-            s += common.substitute('<td align="right"><a href="static/pages/changelog.txt">{asm} {version} {user}@{org}</a></td></tr></table>', {
+            s += '<div id="footer">';
+            s += '<div class="asm-footer-users">' + common.substitute(loggedin, { "0": userlist.join(", ")}) + '</div>';
+            s += '<div class="asm-footer-version">';
+            s += common.substitute('<a id="link-about" href="#">{asm} {version} {user}@{org}</a>', {
                 "asm":      _("ASM"),
-                "version":  controller.version,
+                "version":  controller.version.substring(0, controller.version.indexOf(" ")),
                 "user":     asm.user,
                 "org":      config.str("Organisation")});
+            s += '</div>';
+            s += '</div>';
             return s;
         },
 
         tip: function() {
-            var tips = [ 
+            const tips = [ 
                 _("You can middle click a link to open it in a new browser tab (push the wheel on most modern mice)."),
                 _("You can bookmark search results, animals, people and most data entry screens."),
                 _("Most browsers will let you visit a record you have been to in this session by typing part of its name in the address bar."),
@@ -40,288 +45,365 @@ $(function() {
                 _("When you use Move > Adopt an animal, ASM will automatically return any open foster or retailer movement before creating the adoption."),
                 _("When you use Move > Foster an animal, ASM will automatically return any open foster movement before moving the animal to its new home."),
                 _("When entering dates, hold down CTRL and use the cursor keys to move around the calendar. Press t to go to today."),
-                _("You can upload images called logo.jpg and splash.jpg to the Settings-Reports-Extra Images screen to override the login splash screen and logo in the upper left corner of the application."),
+                _("You can upload images called logo.jpg and splash.jpg to the Settings, Reports, Extra Images screen to override the login splash screen and logo in the upper left corner of the application."),
                 _("ASM can track detailed monthly and annual figures for your shelter. Install the Monthly Figures and Annual Figures reports from Settings-Reports-Browse sheltermanager.com"),
                 _("ASM comes with a dictionary of 4,000 animal names. Just click the generate random name button when adding an animal."),
-                _("You can set a default amount for different payment types in the Settings-Lookup Data screen. Very handy when creating adoptions."),
+                _("You can set a default amount for different payment types in the Settings, Lookup Data screen. Very handy when creating adoptions."),
                 _("You can drag and drop animals in shelter view to change their locations."),
-                _("Lots of reports installed? Clean up the Reports menu with Settings-Options-Display-Show report menu items in collapsed categories."),
+                _("Lots of reports installed? Clean up the Reports menu with Settings, Options, Display, Show report menu items in collapsed categories."),
                 _("Press F11 in HTML or SQL code editing boxes to edit in fullscreen mode")
             ];
             return tips[Math.floor(Math.random() * tips.length)];
         },
 
         render_alerts: function() {
-            var s = "", alerts;
+            let s = "", alerts;
             if (!config.bool("ShowAlertsHomePage")) { return; }
             if (!controller.alerts || controller.alerts.length == 0) { return; }
             alerts = controller.alerts[0];
-            var totalalerts = alerts.DUEVACC + alerts.EXPVACC + alerts.DUETEST + alerts.DUEMED + 
-                alerts.URGENTWL +  alerts.LONGRSV + alerts.DUEDON + alerts.ENDTRIAL + alerts.NOTNEU + 
-                alerts.PUBLISH + alerts.LOOKFOR + alerts.LOSTFOUND + alerts.INFORM + alerts.ACUNFINE + 
-                alerts.ACUNDISP + alerts.ACUNCOMP + alerts.ACFOLL + alerts.TLOVER + alerts.STEXP + 
-                alerts.STEXPSOON + alerts.TRNODRV;
-            if (config.bool("EmblemNotForAdoption")) {
-                totalalerts += alerts.NOTADOPT;
+            let totalalerts = 0;
+            s += '<p class="asm-menu-category">' + _("Alerts") + ' (<span id="totalalerts"></span>)</p><p>';
+            if (alerts.DUEVACC > 0 && common.has_permission("vav")) {
+                totalalerts += alerts.DUEVACC;
+                s += '<a href="vaccination">' + html.icon("vaccination") + ' ' + 
+                    common.ntranslate(alerts.DUEVACC, [ 
+                        _("{plural0} vaccination needs to be administered today"), 
+                        _("{plural1} vaccinations need to be administered today"),
+                        _("{plural2} vaccinations need to be administered today"),
+                        _("{plural3} vaccinations need to be administered today")
+                    ]) + '</a><br />';
             }
-            if (config.bool("EmblemNotMicrochipped")) {
-                totalalerts += alerts.NOTCHIP;
+            if (alerts.EXPVACC > 0 && common.has_permission("vav")) {
+                totalalerts += alerts.EXPVACC;
+                s += '<a href="vaccination?offset=xm365">' + html.icon("vaccination") + ' ' + 
+                    common.ntranslate(alerts.EXPVACC, [ 
+                        _("{plural0} vaccination has expired"), 
+                        _("{plural1} vaccinations have expired"),
+                        _("{plural2} vaccinations have expired"),
+                        _("{plural3} vaccinations have expired")
+                    ]) + '</a><br />';
             }
-            if (config.bool("EmblemHold")) {
-                totalalerts += alerts.HOLDTODAY;
+            if (alerts.NOTRAB > 0 && common.has_permission("va") && config.bool("EmblemRabies") ) {
+                totalalerts += alerts.NOTRAB;
+                s += '<a href="search?q=norabies">' + html.icon("rabies") + ' ' + 
+                    common.ntranslate(alerts.NOTRAB, [
+                        _("{plural0} animal has not had a rabies vaccination"),
+                        _("{plural1} animals have not had a rabies vaccination"),
+                        _("{plural2} animals have not had a rabies vaccination"),
+                        _("{plural3} animals have not had a rabies vaccination")
+                    ]) + '</a><br />';
             }
-            if (config.bool("WarnNoHomeCheck")) { 
-                totalalerts += alerts.RSVHCK; 
+            if (alerts.NEVERVACC > 0 && common.has_permission("va") && config.bool("EmblemNeverVacc") ) {
+                totalalerts += alerts.NEVERVACC;
+                s += '<a href="search?q=nevervacc">' + html.icon("novaccination") + ' ' + 
+                    common.ntranslate(alerts.NEVERVACC, [
+                        _("{plural0} animal has never had a vaccination of any type"),
+                        _("{plural1} animals have never had a vaccination of any type"),
+                        _("{plural2} animals have never had a vaccination of any type"),
+                        _("{plural3} animals have never had a vaccination of any type")
+                    ]) + '</a><br />';
             }
-            if (config.bool("EmblemLongTerm")) { 
-                totalalerts += alerts.LNGTERM; 
+            if (alerts.DUETEST > 0 && common.has_permission("vat")) {
+                totalalerts += alerts.DUETEST;
+                s += '<a href="test">' + html.icon("test") + ' ' + 
+                    common.ntranslate(alerts.DUETEST, [ 
+                        _("{plural0} test needs to be performed today"), 
+                        _("{plural1} tests need to be performed today"),
+                        _("{plural2} tests need to be performed today"),
+                        _("{plural3} tests need to be performed today")
+                    ]) + '</a><br />';
             }
-            if (totalalerts > 0) {
-                s += '<p class="asm-menu-category">' + _("Alerts") + ' (' + totalalerts + ')</p><p>';
-                if (alerts.DUEVACC > 0 && common.has_permission("vav")) {
-                    s += '<a href="vaccination">' + html.icon("vaccination") + ' ' + 
-                        common.ntranslate(alerts.DUEVACC, [ 
-                            _("{plural0} vaccination needs to be administered today"), 
-                            _("{plural1} vaccinations need to be administered today"),
-                            _("{plural2} vaccinations need to be administered today"),
-                            _("{plural3} vaccinations need to be administered today")
-                        ]) + '</a><br />';
-                }
-                if (alerts.EXPVACC > 0 && common.has_permission("vav")) {
-                    s += '<a href="vaccination?offset=xm365">' + html.icon("vaccination") + ' ' + 
-                        common.ntranslate(alerts.EXPVACC, [ 
-                            _("{plural0} vaccination has expired"), 
-                            _("{plural1} vaccinations have expired"),
-                            _("{plural2} vaccinations have expired"),
-                            _("{plural3} vaccinations have expired")
-                        ]) + '</a><br />';
-                }
-                if (alerts.DUETEST > 0 && common.has_permission("vat")) {
-                    s += '<a href="test">' + html.icon("test") + ' ' + 
-                        common.ntranslate(alerts.DUETEST, [ 
-                            _("{plural0} test needs to be performed today"), 
-                            _("{plural1} tests need to be performed today"),
-                            _("{plural2} tests need to be performed today"),
-                            _("{plural3} tests need to be performed today")
-                        ]) + '</a><br />';
-                }
-                if (alerts.DUEMED > 0 && common.has_permission("mvam")) {
-                    s += '<a href="medical">' + html.icon("medical") + ' ' + 
-                        common.ntranslate(alerts.DUEMED, [
-                            _("{plural0} medical treatment needs to be administered today"),
-                            _("{plural1} medical treatments need to be administered today"),
-                            _("{plural2} medical treatments need to be administered today"),
-                            _("{plural3} medical treatments need to be administered today")
-                        ]) + '</a><br />';
-                }
-                if (alerts.URGENTWL > 0 && common.has_permission("vwl")) {
-                    s += '<a href="waitinglist_results?priorityfloor=1">' + html.icon("waitinglist") + ' ' + 
-                        common.ntranslate(alerts.URGENTWL, [
-                            _("{plural0} urgent entry on the waiting list"),
-                            _("{plural1} urgent entries on the waiting list"),
-                            _("{plural2} urgent entries on the waiting list"),
-                            _("{plural3} urgent entries on the waiting list")
-                        ]) + '</a><br />';
-                }
-                if (alerts.RSVHCK > 0 && config.bool("WarnNoHomeCheck") && common.has_permission("vo")) {
-                    s += '<a href="search?q=reservenohomecheck">' + html.icon("person") + ' ' + 
-                        common.ntranslate(alerts.RSVHCK, [
-                            _("{plural0} person with an active reservation has not been homechecked"),
-                            _("{plural1} people with active reservations have not been homechecked"),
-                            _("{plural2} people with active reservations have not been homechecked"),
-                            _("{plural3} people with active reservations have not been homechecked")
-                        ]) + '</a><br />';
-                }
-                if (alerts.LONGRSV > 0 && common.has_permission("vamv")) {
-                    s += '<a href="move_book_reservation">' + html.icon("reservation") + ' ' + 
-                        common.ntranslate(alerts.LONGRSV, [
-                            _("{plural0} reservation has been active over a week without adoption"),
-                            _("{plural1} reservations have been active over a week without adoption"),
-                            _("{plural2} reservations have been active over a week without adoption"),
-                            _("{plural3} reservations have been active over a week without adoption")
-                        ]) + '</a><br />';
-                }
-                if (alerts.NOTNEU > 0 && common.has_permission("va") && config.bool("EmblemUnneutered") ) {
-                    s += '<a href="move_book_unneutered">' + html.icon("health") + ' ' + 
-                        common.ntranslate(alerts.NOTNEU, [
-                            _("{plural0} unaltered animal has been adopted in the last month"),
-                            _("{plural1} unaltered animals have been adopted in the last month"),
-                            _("{plural2} unaltered animals have been adopted in the last month"),
-                            _("{plural3} unaltered animals have been adopted in the last month")
-                        ]) + '</a><br />';
-                }
-                if (alerts.NOTCHIP > 0 && common.has_permission("va") && config.bool("EmblemNotMicrochipped") ) {
-                    s += '<a href="search?q=notmicrochipped">' + html.icon("microchip") + ' ' + 
-                        common.ntranslate(alerts.NOTCHIP, [
-                            _("{plural0} shelter animal has not been microchipped"),
-                            _("{plural1} shelter animals have not been microchipped"),
-                            _("{plural2} shelter animals have not been microchipped"),
-                            _("{plural3} shelter animals have not been microchipped")
-                        ]) + '</a><br />';
-                }
-                if (alerts.DUEDON > 0 && common.has_permission("ovod")) {
-                    s += '<a href="donation?offset=d0">' + html.icon("donation") + ' ' + 
-                        common.ntranslate(alerts.DUEDON, [
-                            _("{plural0} person has an overdue payment"),
-                            _("{plural1} people have overdue payments"),
-                            _("{plural2} people have overdue payments"),
-                            _("{plural3} people have overdue payments")
-                        ]) + '</a><br />';
-                }
-                if (alerts.ENDTRIAL > 0 && common.has_permission("vamv")) {
-                    s += '<a href="move_book_trial_adoption">' + html.icon("trial") + ' ' + 
-                        common.ntranslate(alerts.ENDTRIAL, [
-                            _("{plural0} trial adoption has ended"),
-                            _("{plural1} trial adoptions have ended"),
-                            _("{plural2} trial adoptions have ended"),
-                            _("{plural3} trial adoptions have ended")
-                        ]) + '</a><br />';
-                }
-                if (alerts.NOTADOPT > 0 && common.has_permission("va") && config.bool("EmblemNotForAdoption")) {
-                    s += '<a href="search?q=notforadoption">' + html.icon("notforadoption") + ' ' + 
-                        common.ntranslate(alerts.NOTADOPT, [
-                            _("{plural0} animal is not available for adoption"),
-                            _("{plural1} animals are not available for adoption"),
-                            _("{plural2} animals are not available for adoption"),
-                            _("{plural3} animals are not available for adoption")
-                        ]) + '</a><br />';
-                }
-                if (alerts.LNGTERM > 0 && common.has_permission("va") && config.bool("EmblemLongTerm")) {
-                    s += '<a href="search?q=longterm">' + html.icon("calendar") + ' ' + 
-                        common.ntranslate(alerts.LNGTERM, [
-                            _("{plural0} animal has been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
-                            _("{plural1} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
-                            _("{plural2} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
-                            _("{plural3} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths"))
-                        ]) + '</a><br />';
-                }
+            if (alerts.DUEMED > 0 && common.has_permission("mvam")) {
+                totalalerts += alerts.DUEMED;
+                s += '<a href="medical">' + html.icon("medical") + ' ' + 
+                    common.ntranslate(alerts.DUEMED, [
+                        _("{plural0} medical treatment needs to be administered today"),
+                        _("{plural1} medical treatments need to be administered today"),
+                        _("{plural2} medical treatments need to be administered today"),
+                        _("{plural3} medical treatments need to be administered today")
+                    ]) + '</a><br />';
+            }
+            if (alerts.DUECLINIC > 0 && common.has_permission("vcl")) {
+                totalalerts += alerts.DUECLINIC;
+                s += '<a href="clinic_waitingroom">' + html.icon("health") + ' ' + 
+                    common.ntranslate(alerts.DUECLINIC, [
+                        _("{plural0} clinic appointment today"),
+                        _("{plural1} clinic appointments today"),
+                        _("{plural2} clinic appointments today"),
+                        _("{plural3} clinic appointments today")
+                    ]) + '</a><br />';
+            }
 
-                if (alerts.HOLDTODAY > 0 && common.has_permission("va") && config.bool("EmblemHold")) {
-                    s += '<a href="search?q=holdtoday">' + html.icon("hold") + ' ' + 
-                        common.ntranslate(alerts.HOLDTODAY, [
-                            _("{plural0} animal has a hold ending today"),
-                            _("{plural1} animals have holds ending today"),
-                            _("{plural2} animals have holds ending today"),
-                            _("{plural3} animals have holds ending today")
-                        ]) + '</a><br />';
-                }
-                if (alerts.INFORM > 0 && common.has_permission("vif")) {
-                    s += '<a href="onlineform_incoming">' + html.icon("forms") + ' ' + 
-                        common.ntranslate(alerts.INFORM, [
-                            _("{plural0} new online form submission"),
-                            _("{plural1} new online form submissions"),
-                            _("{plural2} new online form submissions"),
-                            _("{plural3} new online form submissions")
-                        ]) + '</a><br />';
-                }
-                if (alerts.LOOKFOR > 0 && common.has_permission("vcr")) {
-                    s += '<a href="person_lookingfor">' + html.icon("animal-find") + ' ' + 
-                        common.ntranslate(alerts.LOOKFOR, [
-                            _("{plural0} shelter animal has people looking for them"),
-                            _("{plural1} shelter animals have people looking for them"),
-                            _("{plural2} shelter animals have people looking for them"),
-                            _("{plural3} shelter animals have people looking for them")
-                        ]) + '</a><br />';
-                }
-                if (alerts.LOSTFOUND > 0 && common.has_permission("mlaf")) {
-                    s += '<a href="lostfound_match">' + html.icon("match") + ' ' + 
-                        common.ntranslate(alerts.LOSTFOUND, [
-                            _("{plural0} potential match for a lost animal"),
-                            _("{plural1} potential matches for lost animals"),
-                            _("{plural2} potential matches for lost animals"),
-                            _("{plural3} potential matches for lost animals")
-                        ]) + '</a><br />';
-                }
-                if (alerts.PUBLISH > 0 && common.has_permission("uipb")) {
-                    s += '<a href="publish_logs">' + html.icon("web") + ' ' + 
-                        common.ntranslate(alerts.PUBLISH, [
-                            _("{plural0} recent publisher run had errors"),
-                            _("{plural1} recent publisher runs had errors"),
-                            _("{plural2} recent publisher runs had errors"),
-                            _("{plural3} recent publisher runs had errors")
-                        ]) + '</a><br />';
-                }
-                if (alerts.ACUNFINE > 0 && common.has_permission("vaci")) {
-                    s += '<a href="citations?filter=unpaid">' + html.icon("donation") + ' ' + 
-                        common.ntranslate(alerts.ACUNFINE, [
-                            _("{plural0} unpaid fine"),
-                            _("{plural1} unpaid fines"),
-                            _("{plural2} unpaid fines"),
-                            _("{plural3} unpaid fines")
-                        ]) + '</a><br />';
-                }
-                if (alerts.ACUNDISP > 0 && common.has_permission("vaci")) {
-                    s += '<a href="incident_find_results?filter=undispatched">' + html.icon("call") + ' ' + 
-                        common.ntranslate(alerts.ACUNDISP, [
-                            _("{plural0} undispatched animal control call"),
-                            _("{plural1} undispatched animal control calls"),
-                            _("{plural2} undispatched animal control calls"),
-                            _("{plural3} undispatched animal control calls")
-                        ]) + '</a><br />';
-                }
-                if (alerts.ACFOLL > 0 && common.has_permission("vaci")) {
-                    s += '<a href="incident_find_results?filter=requirefollowup">' + html.icon("call") + ' ' + 
-                        common.ntranslate(alerts.ACFOLL, [
-                            _("{plural0} animal control call due for followup today"),
-                            _("{plural1} animal control calls due for followup today"),
-                            _("{plural2} animal control calls due for followup today"),
-                            _("{plural3} animal control calls due for followup today")
-                        ]) + '</a><br />';
-                }
-                if (alerts.ACUNCOMP > 0 && common.has_permission("vaci")) {
-                    s += '<a href="incident_find_results?filter=incomplete">' + html.icon("call") + ' ' + 
-                        common.ntranslate(alerts.ACUNCOMP, [
-                            _("{plural0} incomplete animal control call"),
-                            _("{plural1} incomplete animal control calls"),
-                            _("{plural2} incomplete animal control calls"),
-                            _("{plural3} incomplete animal control calls")
-                        ]) + '</a><br />';
-                }
-                if (alerts.TLOVER > 0 && common.has_permission("vatl")) {
-                    s += '<a href="traploan?filter=active">' + html.icon("traploan") + ' ' + 
-                        common.ntranslate(alerts.TLOVER, [
-                            _("{plural0} trap is overdue for return"),
-                            _("{plural1} traps are overdue for return"),
-                            _("{plural2} traps are overdue for return"),
-                            _("{plural3} traps are overdue for return")
-                        ]) + '</a><br />';
-                }
-                if (alerts.STEXP > 0 && common.has_permission("vsl")) {
-                    s += '<a href="stocklevel?sortexp=1">' + html.icon("stock") + ' ' + 
-                        common.ntranslate(alerts.STEXP, [
-                            _("{plural0} item of stock has expired"),
-                            _("{plural1} items of stock have expired"),
-                            _("{plural2} items of stock have expired"),
-                            _("{plural3} items of stock have expired")
-                        ]) + '</a><br />';
-                }
-                if (alerts.STEXPSOON > 0 && common.has_permission("vsl")) {
-                    s += '<a href="stocklevel?sortexp=1">' + html.icon("stock") + ' ' + 
-                        common.ntranslate(alerts.STEXPSOON, [
-                            _("{plural0} item of stock expires in the next month"),
-                            _("{plural1} items of stock expire in the next month"),
-                            _("{plural2} items of stock expire in the next month"),
-                            _("{plural3} items of stock expire in the next month")
-                        ]) + '</a><br />';
-                }
-                if (alerts.TRNODRV > 0 && common.has_permission("vtr")) {
-                    s += '<a href="transport">' + html.icon("transport") + ' ' + 
-                        common.ntranslate(alerts.TRNODRV, [
-                            _("{plural0} transport does not have a driver assigned"),
-                            _("{plural1} transports do not have a driver assigned"),
-                            _("{plural2} transports do not have a driver assigned"),
-                            _("{plural3} transports do not have a driver assigned")
-                        ]) + '</a><br />';
-                }
-                s += '</p>';
+            if (alerts.URGENTWL > 0 && common.has_permission("vwl")) {
+                totalalerts += alerts.URGENTWL;
+                s += '<a href="waitinglist_results?priorityfloor=1">' + html.icon("waitinglist") + ' ' + 
+                    common.ntranslate(alerts.URGENTWL, [
+                        _("{plural0} urgent entry on the waiting list"),
+                        _("{plural1} urgent entries on the waiting list"),
+                        _("{plural2} urgent entries on the waiting list"),
+                        _("{plural3} urgent entries on the waiting list")
+                    ]) + '</a><br />';
             }
+            if (alerts.RSVHCK > 0 && config.bool("WarnNoHomeCheck") && common.has_permission("vo")) {
+                totalalerts += alerts.RSVHCK;
+                s += '<a href="search?q=reservenohomecheck">' + html.icon("person") + ' ' + 
+                    common.ntranslate(alerts.RSVHCK, [
+                        _("{plural0} person with an active reservation has not been homechecked"),
+                        _("{plural1} people with active reservations have not been homechecked"),
+                        _("{plural2} people with active reservations have not been homechecked"),
+                        _("{plural3} people with active reservations have not been homechecked")
+                    ]) + '</a><br />';
+            }
+            if (alerts.LONGRSV > 0 && common.has_permission("vamv")) {
+                totalalerts += alerts.LONGRSV;
+                s += '<a href="move_book_reservation">' + html.icon("reservation") + ' ' + 
+                    common.ntranslate(alerts.LONGRSV, [
+                        _("{plural0} reservation has been active over a week without adoption"),
+                        _("{plural1} reservations have been active over a week without adoption"),
+                        _("{plural2} reservations have been active over a week without adoption"),
+                        _("{plural3} reservations have been active over a week without adoption")
+                    ]) + '</a><br />';
+            }
+            if (alerts.NOTNEU > 0 && common.has_permission("va") && config.bool("EmblemUnneutered") ) {
+                totalalerts += alerts.NOTNEU;
+                s += '<a href="move_book_unneutered">' + html.icon("unneutered") + ' ' + 
+                    common.ntranslate(alerts.NOTNEU, [
+                        _("{plural0} unaltered animal has been adopted in the last month"),
+                        _("{plural1} unaltered animals have been adopted in the last month"),
+                        _("{plural2} unaltered animals have been adopted in the last month"),
+                        _("{plural3} unaltered animals have been adopted in the last month")
+                    ]) + '</a><br />';
+            }
+            if (alerts.NOTCHIP > 0 && common.has_permission("va") && config.bool("EmblemNotMicrochipped") ) {
+                totalalerts += alerts.NOTCHIP;
+                s += '<a href="search?q=notmicrochipped">' + html.icon("microchip") + ' ' + 
+                    common.ntranslate(alerts.NOTCHIP, [
+                        _("{plural0} shelter animal has not been microchipped"),
+                        _("{plural1} shelter animals have not been microchipped"),
+                        _("{plural2} shelter animals have not been microchipped"),
+                        _("{plural3} shelter animals have not been microchipped")
+                    ]) + '</a><br />';
+            }
+            if (alerts.DUEDON > 0 && common.has_permission("ovod")) {
+                totalalerts += alerts.DUEDON;
+                s += '<a href="donation?offset=d0">' + html.icon("donation") + ' ' + 
+                    common.ntranslate(alerts.DUEDON, [
+                        _("{plural0} person has an overdue payment"),
+                        _("{plural1} people have overdue payments"),
+                        _("{plural2} people have overdue payments"),
+                        _("{plural3} people have overdue payments")
+                    ]) + '</a><br />';
+            }
+            if (alerts.ENDTRIAL > 0 && common.has_permission("vamv")) {
+                totalalerts += alerts.ENDTRIAL;
+                s += '<a href="move_book_trial_adoption">' + html.icon("trial") + ' ' + 
+                    common.ntranslate(alerts.ENDTRIAL, [
+                        _("{plural0} trial adoption has ended"),
+                        _("{plural1} trial adoptions have ended"),
+                        _("{plural2} trial adoptions have ended"),
+                        _("{plural3} trial adoptions have ended")
+                    ]) + '</a><br />';
+            }
+            if (alerts.DOCUNSIGNED > 0 && common.has_permission("vo")) {
+                totalalerts += alerts.DOCUNSIGNED;
+                s += '<a href="search?q=unsigned">' + html.icon("signature") + ' ' + 
+                    common.ntranslate(alerts.DOCUNSIGNED, [
+                        _("{plural0} document signing request issued in the last month is unsigned"),
+                        _("{plural1} document signing requests issued in the last month are unsigned"),
+                        _("{plural2} document signing requests issued in the last month are unsigned"),
+                        _("{plural3} document signing requests issued in the last month are unsigned")
+                    ]) + '</a><br />';
+            }
+            if (alerts.DOCSIGNED > 0 && common.has_permission("vo")) {
+                totalalerts += alerts.DOCSIGNED;
+                s += '<a href="search?q=signed">' + html.icon("signature") + ' ' + 
+                    common.ntranslate(alerts.DOCSIGNED, [
+                        _("{plural0} document signing request has been received in the last week"),
+                        _("{plural1} document signing requests have been received in the last week"),
+                        _("{plural2} document signing requests have been received in the last week"),
+                        _("{plural3} document signing requests have been received in the last week")
+                    ]) + '</a><br />';
+            }
+            if (alerts.OPENCHECKOUT > 0 && common.has_permission("vo")) {
+                totalalerts += alerts.OPENCHECKOUT;
+                s += '<a href="search?q=opencheckout">' + html.icon("movement") + ' ' + 
+                    common.ntranslate(alerts.OPENCHECKOUT, [
+                        _("{plural0} adoption checkout request initiated in the last week is still open"),
+                        _("{plural1} adoption checkout requests initiated in the last week are still open"),
+                        _("{plural2} adoption checkout requests initiated in the last week are still open"),
+                        _("{plural3} adoption checkout requests initiated in the last week are still open")
+                    ]) + '</a><br />';
+            }
+
+            if (alerts.NOTADOPT > 0 && common.has_permission("va") && config.bool("EmblemNotForAdoption")) {
+                totalalerts += alerts.NOTADOPT;
+                s += '<a href="search?q=notforadoption">' + html.icon("notforadoption") + ' ' + 
+                    common.ntranslate(alerts.NOTADOPT, [
+                        _("{plural0} animal is not available for adoption"),
+                        _("{plural1} animals are not available for adoption"),
+                        _("{plural2} animals are not available for adoption"),
+                        _("{plural3} animals are not available for adoption")
+                    ]) + '</a><br />';
+            }
+            if (alerts.LNGTERM > 0 && common.has_permission("va") && config.bool("EmblemLongTerm")) {
+                totalalerts += alerts.LNGTERM;
+                s += '<a href="search?q=longterm">' + html.icon("calendar") + ' ' + 
+                    common.ntranslate(alerts.LNGTERM, [
+                        _("{plural0} animal has been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
+                        _("{plural1} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
+                        _("{plural2} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths")),
+                        _("{plural3} animals have been on the shelter longer than {0} months").replace("{0}", config.integer("LongTermMonths"))
+                    ]) + '</a><br />';
+            }
+
+            if (alerts.HOLDTODAY > 0 && common.has_permission("va") && config.bool("EmblemHold")) {
+                totalalerts += alerts.HOLDTODAY;
+                s += '<a href="search?q=holdtoday">' + html.icon("hold") + ' ' + 
+                    common.ntranslate(alerts.HOLDTODAY, [
+                        _("{plural0} animal has a hold ending today"),
+                        _("{plural1} animals have holds ending today"),
+                        _("{plural2} animals have holds ending today"),
+                        _("{plural3} animals have holds ending today")
+                    ]) + '</a><br />';
+            }
+            if (alerts.INFORM > 0 && common.has_permission("vif")) {
+                totalalerts += alerts.INFORM;
+                s += '<a href="onlineform_incoming">' + html.icon("forms") + ' ' + 
+                    common.ntranslate(alerts.INFORM, [
+                        _("{plural0} new online form submission"),
+                        _("{plural1} new online form submissions"),
+                        _("{plural2} new online form submissions"),
+                        _("{plural3} new online form submissions")
+                    ]) + '</a><br />';
+            }
+            if (alerts.LOOKFOR > 0 && common.has_permission("vcr")) {
+                totalalerts += alerts.LOOKFOR;
+                s += '<a href="person_lookingfor">' + html.icon("animal-find") + ' ' + 
+                    common.ntranslate(alerts.LOOKFOR, [
+                        _("{plural0} shelter animal has people looking for them"),
+                        _("{plural1} shelter animals have people looking for them"),
+                        _("{plural2} shelter animals have people looking for them"),
+                        _("{plural3} shelter animals have people looking for them")
+                    ]) + '</a><br />';
+            }
+            if (alerts.LOSTFOUND > 0 && common.has_permission("mlaf")) {
+                totalalerts += alerts.LOSTFOUND;
+                s += '<a href="lostfound_match">' + html.icon("match") + ' ' + 
+                    common.ntranslate(alerts.LOSTFOUND, [
+                        _("{plural0} potential match for a lost animal"),
+                        _("{plural1} potential matches for lost animals"),
+                        _("{plural2} potential matches for lost animals"),
+                        _("{plural3} potential matches for lost animals")
+                    ]) + '</a><br />';
+            }
+            if (alerts.PUBLISH > 0 && common.has_permission("uipb")) {
+                totalalerts += alerts.PUBLISH;
+                s += '<a href="publish_logs">' + html.icon("web") + ' ' + 
+                    common.ntranslate(alerts.PUBLISH, [
+                        _("{plural0} recent publisher run had errors"),
+                        _("{plural1} recent publisher runs had errors"),
+                        _("{plural2} recent publisher runs had errors"),
+                        _("{plural3} recent publisher runs had errors")
+                    ]) + '</a><br />';
+            }
+            if (alerts.ACUNFINE > 0 && common.has_permission("vaci")) {
+                totalalerts += alerts.ACUNFINE;
+                s += '<a href="citations?filter=unpaid">' + html.icon("donation") + ' ' + 
+                    common.ntranslate(alerts.ACUNFINE, [
+                        _("{plural0} unpaid fine"),
+                        _("{plural1} unpaid fines"),
+                        _("{plural2} unpaid fines"),
+                        _("{plural3} unpaid fines")
+                    ]) + '</a><br />';
+            }
+            if (alerts.ACUNDISP > 0 && common.has_permission("vaci")) {
+                totalalerts += alerts.ACUNDISP;
+                s += '<a href="incident_find_results?filter=undispatched">' + html.icon("call") + ' ' + 
+                    common.ntranslate(alerts.ACUNDISP, [
+                        _("{plural0} undispatched animal control call"),
+                        _("{plural1} undispatched animal control calls"),
+                        _("{plural2} undispatched animal control calls"),
+                        _("{plural3} undispatched animal control calls")
+                    ]) + '</a><br />';
+            }
+            if (alerts.ACFOLL > 0 && common.has_permission("vaci")) {
+                totalalerts += alerts.ACFOLL;
+                s += '<a href="incident_find_results?filter=requirefollowup">' + html.icon("call") + ' ' + 
+                    common.ntranslate(alerts.ACFOLL, [
+                        _("{plural0} animal control call due for followup today"),
+                        _("{plural1} animal control calls due for followup today"),
+                        _("{plural2} animal control calls due for followup today"),
+                        _("{plural3} animal control calls due for followup today")
+                    ]) + '</a><br />';
+            }
+            if (alerts.ACUNCOMP > 0 && common.has_permission("vaci")) {
+                totalalerts += alerts.ACUNCOMP;
+                s += '<a href="incident_find_results?filter=incomplete">' + html.icon("call") + ' ' + 
+                    common.ntranslate(alerts.ACUNCOMP, [
+                        _("{plural0} incomplete animal control call"),
+                        _("{plural1} incomplete animal control calls"),
+                        _("{plural2} incomplete animal control calls"),
+                        _("{plural3} incomplete animal control calls")
+                    ]) + '</a><br />';
+            }
+            if (alerts.TLOVER > 0 && common.has_permission("vatl")) {
+                totalalerts += alerts.TLOVER;
+                s += '<a href="traploan?filter=active">' + html.icon("traploan") + ' ' + 
+                    common.ntranslate(alerts.TLOVER, [
+                        _("{plural0} item of equipment is overdue for return"),
+                        _("{plural1} items of equipment are overdue for return"),
+                        _("{plural2} items of equipment are overdue for return"),
+                        _("{plural3} items of equipment are overdue for return")
+                    ]) + '</a><br />';
+            }
+            if (alerts.STEXP > 0 && common.has_permission("vsl")) {
+                totalalerts += alerts.STEXP;
+                s += '<a href="stocklevel?sortexp=1">' + html.icon("stock") + ' ' + 
+                    common.ntranslate(alerts.STEXP, [
+                        _("{plural0} item of stock has expired"),
+                        _("{plural1} items of stock have expired"),
+                        _("{plural2} items of stock have expired"),
+                        _("{plural3} items of stock have expired")
+                    ]) + '</a><br />';
+            }
+            if (alerts.STEXPSOON > 0 && common.has_permission("vsl")) {
+                totalalerts += alerts.STEXPSOON;
+                s += '<a href="stocklevel?sortexp=1">' + html.icon("stock") + ' ' + 
+                    common.ntranslate(alerts.STEXPSOON, [
+                        _("{plural0} item of stock expires in the next month"),
+                        _("{plural1} items of stock expire in the next month"),
+                        _("{plural2} items of stock expire in the next month"),
+                        _("{plural3} items of stock expire in the next month")
+                    ]) + '</a><br />';
+            }
+            if (alerts.TRNODRV > 0 && common.has_permission("vtr")) {
+                totalalerts += alerts.TRNODRV;
+                s += '<a href="transport">' + html.icon("transport") + ' ' + 
+                    common.ntranslate(alerts.TRNODRV, [
+                        _("{plural0} transport does not have a driver assigned"),
+                        _("{plural1} transports do not have a driver assigned"),
+                        _("{plural2} transports do not have a driver assigned"),
+                        _("{plural3} transports do not have a driver assigned")
+                    ]) + '</a><br />';
+            }
+            s += '</p>';
+            main.total_alerts = totalalerts;
             return s;
         },
 
         render_animal_links: function() {
-            var s = [];
-            if (controller.linkname != "none" && controller.animallinks.length > 0) {
-                s.push('<p class="asm-menu-category">' + controller.linkname + '</p>');
+            let s = [];
+            let linknames = { "recentlychanged": _("Recently Changed"), 
+                "recentlyentered": _("Recently Entered Shelter"),
+                "recentlyadopted": _("Recently Adopted"), 
+                "recentlyfostered": _("RecentlyFostered"),
+                "adoptable": _("Up for adoption"), 
+                "longestonshelter": _("Longest On Shelter") };
+            let callout = '<span class="asm-callout" id="callout-linkstale">';
+            callout +=  _("Some data on this screen may be up to {0} minutes out of date.").replace("{0}", (controller.age / 60));
+            callout += '</span>';
+            if (controller.linkmode != "none" && controller.animallinks.length > 0) {
+                s.push('<p class="asm-menu-category">' + linknames[controller.linkmode] + ' ' + callout + '</p>');
                 $.each(controller.animallinks, function(i, a) {
                     // Skip this one if the animal is deceased and we aren't showing them
                     if (!config.bool("ShowDeceasedHomePage") && a.DECEASEDDATE) { return; }
@@ -334,20 +416,20 @@ $(function() {
         },
 
         render_diary: function() {
-            var s = "";
+            let s = "";
             s += '<p class="asm-menu-category"><a href="diary_edit_my">' + common.substitute(_("Diary for {0}"), {"0": asm.user }) + '</a> ';
             s += '<button id="button-adddiary">' + _("Add a diary note") + '</button>';
             s += '<button id="button-diarycal">' + _("Calendar view") + '</button></p>';
             s += '<table class="asm-main-table asm-underlined-rows">';
             s += '<tbody>';
             $.each(controller.diary, function(i, d) {
-                var link = "#";
+                let link = "#";
                 if (d.LINKTYPE == 1) { link = "animal?id=" + d.LINKID; }
                 if (d.LINKTYPE == 2) { link = "person?id=" + d.LINKID; }
                 if (d.LINKTYPE == 3) { link = "lostanimal?id=" + d.LINKID; }
                 if (d.LINKTYPE == 4) { link = "foundanimal?id=" + d.LINKID; }
                 if (d.LINKTYPE == 5) { link = "waitinglist?id=" + d.LINKID; }
-                if (d.LINKTYPE == 6) { link = "#"; }
+                if (d.LINKTYPE == 7) { link = "incident?id=" + d.LINKID; }
                 s += '<tr title="' + html.title(common.substitute(_("Added by {0} on {1}"), { "0": d.CREATEDBY, "1": format.date(d.CREATEDDATE) })) + '">';
                 s += '<td>' + format.date(d.DIARYDATETIME);
                 if (d.DIARYFORNAME != asm.user) {
@@ -366,7 +448,7 @@ $(function() {
         },
 
         render_messages: function() {
-            var s = "";
+            let s = "";
 
             s += '<p class="asm-menu-category">' + _("Message Board") + ' <button id="button-addmessage">' + _("Add Message") + '</button></p>';
             s += '<table id="asm-messageboard" class="asm-main-table asm-underlined-rows"><tbody>';
@@ -383,10 +465,10 @@ $(function() {
                 s += '</span></td>';
                 s += '<td><span style="white-space: nowrap; padding-right: 5px;">';
                 if (m.PRIORITY == 1) {
-                    s += '<span class="ui-icon ui-icon-alert" title="' + html.title(_('Important')) + '" style="float: left"></span>';
+                    s += '<span class="ui-icon ui-icon-alert" title="' + html.title(_('Important')) + '"></span>';
                 }
                 else {
-                    s += '<span class="ui-icon ui-icon-info" title="' + html.title(_('Information')) + '" style="float: left"></span>';
+                    s += '<span class="ui-icon ui-icon-info" title="' + html.title(_('Information')) + '"></span>';
                 }
                 s += format.date(m.ADDED);
                 s += '</span></td>';
@@ -413,7 +495,7 @@ $(function() {
         },
 
         render_stats: function() {
-            var s = "", stats, displayname;
+            let s = "", stats, displayname;
             if (config.str("ShowStatsHomePage") == "none") { return; }
             if (!controller.stats || controller.stats.length == 0) { return; }
             stats = controller.stats[0];
@@ -465,6 +547,22 @@ $(function() {
                     _("{plural3} animals were transferred to other shelters")
                     ]) + '<br />';
             }
+            if (stats.RELEASED > 0 && common.has_permission("vamv")) {
+                s += html.icon("book") + ' ' + common.ntranslate(stats.RELEASED, [
+                    _("{plural0} animal was released to wild"),
+                    _("{plural1} animals were released to wild"),
+                    _("{plural2} animals were released to wild"),
+                    _("{plural3} animals were released to wild")
+                    ]) + '<br />';
+            }
+            if (stats.TNR > 0 && common.has_permission("vamv")) {
+                s += html.icon("book") + ' ' + common.ntranslate(stats.TNR, [
+                    _("{plural0} animal was TNR"),
+                    _("{plural1} animals were TNR"),
+                    _("{plural2} animals were TNR"),
+                    _("{plural3} animals were TNR")
+                    ]) + '<br />';
+            }
             if (stats.PTS > 0 && common.has_permission("va") && config.bool("ShowDeceasedHomePage")) {
                 s += html.icon("death") + ' ' + common.ntranslate(stats.PTS, [
                     _("{plural0} animal was euthanized"),
@@ -483,13 +581,17 @@ $(function() {
             }
             if (stats.DOA > 0 && common.has_permission("va") && config.bool("ShowDeceasedHomePage")) {
                 s += html.icon("death") + ' ' + common.ntranslate(stats.DOA, [
-                    _("{plural0} animal as dead on arrival"),
+                    _("{plural0} animal was dead on arrival"),
                     _("{plural1} animals were dead on arrival"),
                     _("{plural2} animals were dead on arrival"),
                     _("{plural3} animals were dead on arrival")
                     ]) + '<br />';
             }
-
+            if (stats.LIVERELEASE > 0 && common.has_permission("vamv") && config.bool("ShowDeceasedHomePage")) {
+                // let rate = Math.round((stats.LIVERELEASE / (stats.ENTERED + stats.BEGINCOUNT)) * 100); // more "correct" but will lag until period end due to inventory
+                let rate = Math.round((stats.LIVERELEASE / (stats.LIVERELEASE + stats.LOSTSTOLEN + stats.DIED + stats.PTS)) * 100);
+                s += html.icon("report") + ' ' + _("{0}% live release rate").replace("{0}", rate) + "<br />";
+            }
             if (stats.DONATIONS > 0 && common.has_permission("ovod") && config.bool("ShowFinancialHomePage")) {
                 s += html.icon("donation") + ' ' + 
                     _("{0} received").replace("{0}", format.currency(stats.DONATIONS))
@@ -505,7 +607,7 @@ $(function() {
         },
 
         render_timeline: function() {
-            var h = [];
+            let h = [];
             if (!config.bool("ShowTimelineHomePage") || !common.has_permission("va")) { return; }
             h.push('<p class="asm-menu-category"><a href="timeline">' + _("Timeline ({0})").replace("{0}", controller.recent.length) + '</a></p><p>');
             $.each(controller.recent, function(i, v) {
@@ -517,50 +619,70 @@ $(function() {
         },
 
         render: function() {
-            var h = [
+            let h = [
             '<div id="dialog-welcome" title="' + _('Welcome!') + '" style="display: none">',
             '<h2 class="centered">' + _("Welcome!") + '</h2>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
+            '<p><span class="ui-icon ui-icon-info"></span>',
             _("Thank you for choosing Animal Shelter Manager for your shelter!") + '<br/>',
             _("Here are some things you should do before you start adding animals and people to your database."),
             '</p>',
             '</div>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-gear" style="float: left; margin-right: .3em;"></span>',
-            '<a href="options" target="_blank"><b>' + _("Settings, Options") + '</b></a>',
-            _("Go the options screen and set your shelter's contact details and other settings."),
+            '<p><span class="ui-icon ui-icon-gear"></span>',
+            '<a href="options" target="_blank"><b>',
+            _("Settings") + html.icon("right") + _("Options") + '</b></a>',
+            _("Go to the options screen and set your shelter's contact details and other settings."),
             '</p>',
             '</div>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-note" style="float: left; margin-right: .3em;"></span>',
-            '<a href="lookups" target="_blank"><b>' + _("Settings, Lookup data") + '</b></a>',
-            _("Go the lookup data screen and add/remove breeds, species and animal types according to the animals your shelter deals with."),
+            '<p><span class="ui-icon ui-icon-note"></span>',
+            '<a href="lookups" target="_blank"><b>',
+            _("Settings") + html.icon("right") + _("Lookup data") + '</b></a>',
+            _("Go to the lookup data screen and add/remove breeds, species and animal types according to the animals your shelter deals with."),
             '</p>',
             '</div>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-person" style="float: left; margin-right: .3em;"></span>',
-            '<a href="systemusers" target="_blank"><b>' + _("Settings, System user accounts") + '</b></a>',
-            _("Go the system users screen and add user accounts for your staff."),
+            '<p><span class="ui-icon ui-icon-person"></span>',
+            '<a href="systemusers" target="_blank"><b>',
+            _("Settings") + html.icon("right") + _("System user accounts") + '</b></a>',
+            _("Go to the system users screen and add user accounts for your staff."),
             '</p>',
             '</div>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-print" style="float: left; margin-right: .3em;"></span>',
-            '<a href="reports?browse=true" target="_blank"><b>' + _("Settings, Reports") + '</b></a>',
+            '<p><span class="ui-icon ui-icon-print"></span>',
+            '<a href="reports?browse=true" target="_blank"><b>',
+            _("Settings") + html.icon("right") + _("Reports") + '</b></a>',
             _("Browse sheltermanager.com and install some reports, charts and mail merges into your new system."),
             '</p>',
             '</div>',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 5px;">',
-            '<p><span class="ui-icon ui-icon-star" style="float: left; margin-right: .3em;"></span>',
+            '<p><span class="ui-icon ui-icon-star"></span>',
             '<a href="static/pages/manual/index.html" target="_blank"><b>' + _("Manual") + '</b></a>',
             _("Read the manual for more information about Animal Shelter Manager."),
             '</p>',
             '</div>',
             '</div> ',
 
+            '<div id="dialog-about" style="display: none" title="' + _("About") + '">',
+            '<p class="asm-main-about-version">',
+            '<img src="static/images/logo/icon-128.png" />',
+             _("ASM") + ' ' + controller.version + '</p>',
+             '<p class="asm-main-about-browser">', 
+             common.substitute(_("{browser} version {version}, running on {os}."), {
+                 "browser": "<b>" + common.browser_info().name + "</b>",
+                 "version": "<b>" + common.browser_info().version + "</b>",
+                 "os": "<b>" + navigator.platform + "</b>"
+            }),
+            '</p>',
+            '<div id="changelog">',
+                '<textarea class="asm-textarea" readonly="readonly" style="width: 650px; height: 400px;"></textarea>',
+            '</div>',
+            '</div>',
+
             '<div id="dialog-addmessage" style="display: none" title="' + _("Add message") + '">',
             '<div class="ui-state-highlight ui-corner-all" style="margin-top: 20px; padding: 0 .7em">',
-            '<p><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
+            '<p><span class="ui-icon ui-icon-info"></span>',
             _("All fields should be completed."),
             '</p>',
             '</div>',
@@ -608,9 +730,9 @@ $(function() {
             this.render_stats(),
             '<p class="asm-menu-category">',
             '<a id="newstoggle" href="#">',
+            '<span id="newsnav" class="ui-icon ui-icon-triangle-1-e"></span>',
             _("ASM News"),
             '<span id="newsunread"></span>',
-            '<span id="newsnav" class="ui-icon ui-icon-triangle-1-e" style="float: left"></span>',
             '</a>',
             '</p>',
             '<span id="newswrapper" style="display: none">',
@@ -626,12 +748,12 @@ $(function() {
 
         bind: function () {
 
-            if (controller.dbmessage != "") {
-                header.show_info(controller.dbmessage);
+            if (controller.dbupdated != "") {
+                header.show_info( _("Updated database to version {0}").replace("{0}", controller.dbupdated) );
             }
 
             if (asm.smcom && asm.smcomexpiry) {
-                var warnat = new Date(format.date_js(asm.smcomexpiry).getTime() - (1000 * 60 * 60 * 24 * 5)),
+                let warnat = new Date(format.date_js(asm.smcomexpiry).getTime() - (1000 * 60 * 60 * 24 * 5)),
                     stopwarnat = format.date_js(asm.smcomexpiry),
                     now = new Date();
                 if (now >= warnat && now < stopwarnat) {
@@ -642,41 +764,41 @@ $(function() {
 
             if (!common.has_permission("vdn")) { $("#asm-main-diary").hide(); }
 
-            var b = {}; 
-            b[_("Create this message")] = function() { 
+            let message_buttons = {}; 
+            message_buttons[_("Create this message")] = async function() { 
                 if (!validate.notblank(["expires", "message"])) { return; }
                 $("#dialog-addmessage").disable_dialog_buttons();
-                var formdata = "mode=addmessage&" + $("#dialog-addmessage .asm-textbox, #dialog-addmessage textarea, #dialog-addmessage select, #dialog-addmessage .asm-checkbox").toPOST();
-                common.ajax_post("main", formdata)
-                    .then(function() { 
-                        var h = "<tr>\n";
-                        h += "<td>\n";
-                        h += "<span style=\"white-space: nowrap; padding-right: 5px;\">" + asm.user + "</span>\n";
-                        h += "</td><td>";
-                        h += "<span style=\"white-space: nowrap; padding-right: 5px;\">";
-                        if ($("#priority").val() == 1) {
-                            h += '<span class="ui-icon ui-icon-alert" style="float: left"></span>\n';
-                        }
-                        else {
-                            h += '<span class="ui-icon ui-icon-info" style="float: left"></span>\n';
-                        }
-                        h += $("#expires").val();
-                        h += "</span></td>";
-                        if ($("#priority").val() == 1) {
-                            h += '<td><span class="mtext" style="font-weight: bold !important">' + $("#message").val() + '</span></td>\n';
-                        }
-                        else {
-                            h += '<td><span class="mtext">' + $("#message").val() + '</span></td>\n';
-                        }
-                        h += "</tr>";
-                        $("#asm-messageboard > tbody:first").prepend(h);
-                    })
-                    .always(function() {
-                        $("#dialog-addmessage").enable_dialog_buttons();
-                        $("#dialog-addmessage").dialog("close");
-                    });
+                let formdata = "mode=addmessage&" + $("#dialog-addmessage .asm-textbox, #dialog-addmessage textarea, #dialog-addmessage select, #dialog-addmessage .asm-checkbox").toPOST();
+                try {
+                    await common.ajax_post("main", formdata);
+                    let h = "<tr>\n";
+                    h += "<td>\n";
+                    h += "<span style=\"white-space: nowrap; padding-right: 5px;\">" + asm.user + "</span>\n";
+                    h += "</td><td>";
+                    h += "<span style=\"white-space: nowrap; padding-right: 5px;\">";
+                    if ($("#priority").val() == 1) {
+                        h += '<span class="ui-icon ui-icon-alert"></span>\n';
+                    }
+                    else {
+                        h += '<span class="ui-icon ui-icon-info"></span>\n';
+                    }
+                    h += $("#expires").val();
+                    h += "</span></td>";
+                    if ($("#priority").val() == 1) {
+                        h += '<td><span class="mtext" style="font-weight: bold !important">' + $("#message").val() + '</span></td>\n';
+                    }
+                    else {
+                        h += '<td><span class="mtext">' + $("#message").val() + '</span></td>\n';
+                    }
+                    h += "</tr>";
+                    $("#asm-messageboard > tbody:first").prepend(h);
+                }
+                finally {
+                    $("#dialog-addmessage").enable_dialog_buttons();
+                    $("#dialog-addmessage").dialog("close");
+                }
             };
-            b[_("Cancel")] = function() { $(this).dialog("close"); };
+            message_buttons[_("Cancel")] = function() { $(this).dialog("close"); };
 
             $("#dialog-addmessage").dialog({
                 autoOpen: false,
@@ -685,24 +807,24 @@ $(function() {
                 dialogClass: "dialogshadow",
                 show: dlgfx.add_show,
                 hide: dlgfx.add_hide,
-                buttons: b,      
+                buttons: message_buttons,      
                 close: function() {
                     $("#dialog-addmessage .asm-textbox").val("");
                     validate.reset("dialog-addmessage");
                 }
             });
 
-            var wb = {};
-            wb[_("I've finished, Don't show me this popup again.")] = {
+            let welcome_buttons = {};
+            welcome_buttons[_("I've finished, Don't show me this popup again.")] = {
                 text: _("I've finished, Don't show me this popup again."),
                 "class": "asm-dialog-actionbutton",
                 click: function() {
-                    var formdata = "mode=showfirsttimescreen";
+                    let formdata = "mode=showfirsttimescreen";
                     common.ajax_post("main", formdata);
                     $(this).dialog("close");
                 }
             };
-            wb[_("Close")] = function() { $(this).dialog("close"); };
+            welcome_buttons[_("Close")] = function() { $(this).dialog("close"); };
 
             $("#dialog-welcome").dialog({
                 autoOpen: false,
@@ -711,11 +833,34 @@ $(function() {
                 dialogClass: "dialogshadow",
                 show: dlgfx.add_show,
                 hide: dlgfx.add_hide,
-                buttons: wb
+                buttons: welcome_buttons
+            });
+
+            let about_buttons = {};
+            about_buttons[_("Close")] = function() {
+                $(this).dialog("close");
+            };
+
+            $("#dialog-about").dialog({
+                autoOpen: false,
+                width: 680,
+                modal: true,
+                dialogClass: "dialogshadow",
+                show: dlgfx.zoom_show,
+                hide: dlgfx.zoom_hide,
+                buttons: about_buttons
+            });
+
+            $("#link-about").click(async function() {
+                header.show_loading();
+                let changelog = await common.ajax_get("static/pages/changelog.txt");
+                $("#changelog>textarea").text(changelog);
+                $("#dialog-about").dialog("open");
+                return false; // squash href #
             });
 
             $(".activeuser").each(function() {
-               var t = $(this);
+               let t = $(this);
                t.click(function() {
                    $("#forname").select("value", t.text());
                    $("#dialog-addmessage").dialog("open");
@@ -744,35 +889,32 @@ $(function() {
 
             $(".messagedelete")
                 .button({ icons: { primary: "ui-icon-trash" }, text: false })
-                .click(function() {
-                var t = $(this);
-                var formdata = "mode=delmessage&id=" + String(t.attr("data"));
-                common.ajax_post("main", formdata)
-                    .then(function() { 
-                        t.closest("tr").fadeOut(); 
-                    });
-            });
+                .click(async function() {
+                    let t = $(this), formdata = "mode=delmessage&id=" + String(t.attr("data"));
+                    await common.ajax_post("main", formdata);
+                    t.closest("tr").fadeOut(); 
+                });
 
             $(".messagetoggle").each(function() {
-                var data = $(this).attr("data");
-                var moretext = " " + _("more");
-                var ldv = $("#long" + data).val();
-                var sdv = $("#short" + data).val();
+                let data = $(this).attr("data");
+                let moretext = " " + _("more");
+                let ldv = $("#long" + data).val();
+                let sdv = $("#short" + data).val();
                 if (ldv.length != sdv.length) {
                     $(this).html(moretext);
                 }
             });
 
             $(".messagetoggle").click(function() {
-                var data = $(this).attr("data");
-                var moretext = " " + _("more");
-                var lesstext = " " + _("less");
-                var mt = $("#mt" + data + " .mtext");
-                var ldv = $("#long" + data).val();
-                var sdv = $("#short" + data).val();
-                var ar = $(this);
+                let data = $(this).attr("data");
+                let moretext = " " + _("more");
+                let lesstext = " " + _("less");
+                let mt = $("#mt" + data + " .mtext");
+                let ldv = $("#long" + data).val();
+                let sdv = $("#short" + data).val();
+                let ar = $(this);
                 if (ldv.length != sdv.length) {
-                    if ($(this).text() == moretext) {
+                    if (ar.text() == moretext) {
                         mt.fadeOut(function() {
                             mt.html(ldv);
                             mt.fadeIn();
@@ -822,16 +964,10 @@ $(function() {
         /** The highest story number the current user has seen */
         max_news_user: 0,
 
-        sync: function() {
+        /** The calculated total number of visible alerts */
+        total_alerts: 0,
 
-            // If there's been a new deployment of ASM since we last
-            // downloaded it to the browser, force a page reload to get the new code.
-            // The noreload parameter is to make sure that if something goes wrong
-            // we only do this once and don't keep looping.
-            if (!controller.noreload && asm.build != controller.build) {
-                common.route("main?noreload=1", true);
-                return;
-            }
+        sync: function() {
 
             // add a class to the html element for desktop or mobile
             if (typeof asm !== "undefined" && asm.mobileapp) { 
@@ -843,15 +979,27 @@ $(function() {
                 $("html").addClass("desktop"); 
             }
 
+            // If there's been a new deployment of ASM since we last
+            // downloaded it to the browser, reload the page using the
+            // new build number to invalidate the cache (passing a b
+            // parameter also triggers the backend to invalidate config
+            // and sets noreload to prevent any potential reload loops)
+            if (asm.build != controller.build && !controller.noreload) {
+                common.route("main?b=" + controller.build, true);
+            }
+
             // What's the highest news story available in the DOM/newsfeed?
             $("#newswrapper p").each(function() {
-                var t = $(this), ds = format.to_int(t.attr("data-story"));
+                let t = $(this), ds = format.to_int(t.attr("data-story"));
                 if (ds > main.max_news_story) { main.max_news_story = ds; }
             });
 
             // What's the highest news story this person has seen?
             main.max_news_user = format.to_int(common.local_get(asm.user + "_news"));
             $("#newsunread").html( "(" + (main.max_news_story - main.max_news_user) + ")" );
+
+            // Set the total alerts
+            $("#totalalerts").text( main.total_alerts );
 
         },
 

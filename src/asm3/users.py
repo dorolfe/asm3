@@ -5,8 +5,12 @@ import asm3.cachemem
 import asm3.configuration
 import asm3.db
 import asm3.dbupdate
+import asm3.lookups
 import asm3.i18n
+import asm3.smcom
 import asm3.utils
+
+from asm3.sitedefs import BASE_URL
 
 import os
 import sys
@@ -17,6 +21,7 @@ CHANGE_ANIMAL                   = "ca"
 VIEW_ANIMAL                     = "va"
 DELETE_ANIMAL                   = "da"
 CLONE_ANIMAL                    = "cloa"
+MERGE_ANIMAL                    = "ma"
 
 GENERATE_DOCUMENTS              = "gaf"
 MODIFY_NAME_DATABASE            = "mand"
@@ -104,7 +109,10 @@ CHANGE_LOG                      = "cle"
 DELETE_LOG                      = "dle"
 VIEW_LOG                        = "vle"
 
-EDIT_ONLINE_FORMS               = "eof"
+ADD_ONLINE_FORMS                = "aof"
+VIEW_ONLINE_FORMS               = "vof"
+CHANGE_ONLINE_FORMS             = "eof"
+DELETE_ONLINE_FORMS             = "dof"
 VIEW_INCOMING_FORMS             = "vif"
 DELETE_INCOMING_FORMS           = "dif"
 
@@ -114,6 +122,8 @@ PUBLISH_OPTIONS                 = "cpo"
 MODIFY_ADDITIONAL_FIELDS        = "maf"
 MODIFY_LOOKUPS                  = "ml"
 MODIFY_DOCUMENT_TEMPLATES       = "mdt"
+EXPORT_ANIMAL_CSV               = "eav"
+IMPORT_CSV_FILE                 = "icv"
 TRIGGER_BATCH                   = "tbp"
 ADD_USER                        = "asu"
 EDIT_USER                       = "esu"
@@ -165,6 +175,8 @@ ADD_INCIDENT                    = "aaci"
 VIEW_INCIDENT                   = "vaci"
 CHANGE_INCIDENT                 = "caci"
 DELETE_INCIDENT                 = "daci"
+DISPATCH_INCIDENT               = "cacd"
+RESPOND_INCIDENT                = "cacr"
 
 ADD_CITATION                    = "aacc"
 VIEW_CITATION                   = "vacc"
@@ -183,6 +195,7 @@ DELETE_LICENCE                  = "dapl"
 
 ADD_ROTA                        = "aoro"
 VIEW_ROTA                       = "voro"
+VIEW_STAFF_ROTA                 = "vsro"
 CHANGE_ROTA                     = "coro"
 DELETE_ROTA                     = "doro"
 
@@ -195,6 +208,14 @@ ADD_STOCKLEVEL                  = "asl"
 VIEW_STOCKLEVEL                 = "vsl"
 DELETE_STOCKLEVEL               = "dsl"
 CHANGE_STOCKLEVEL               = "csl"
+
+ADD_EVENT                       = "ae"
+VIEW_EVENT                      = "ve"
+CHANGE_EVENT                    = "ce"
+DELETE_EVENT                    = "de"
+VIEW_EVENT_ANIMALS              = "vea"
+CHANGE_EVENT_ANIMALS            = "cea"
+LINK_EVENT_MOVEMENT             = "lem"
 
 def check_permission(session, flag, message = ""):
     """
@@ -420,13 +441,43 @@ def get_security_map(dbo, username):
         rv += str(m.SECURITYMAP)
     return rv
 
+def get_site(dbo, username):
+    """
+    Returns a user's site or 0 if it doesn't have one.
+    If this is being called as part of a CSV import, or incoming form, 
+    we remove those prefixes from the username first.
+    """
+    try:
+        if username.startswith("import/"): username = username[7:]
+        if username.startswith("form/"): username = username[5:]
+        return dbo.query_int("SELECT SiteID FROM users WHERE UserName LIKE ?", [username])
+    except:
+        return 0
+
+def get_diary_forlist(dbo):
+    """
+    Returns a list of all roles, plus users who are valid targets for diary notes
+    (ie. have the VIEW_DIARY permission)
+    List returned contains USERNAME which is both roles and users
+    """
+    users = get_users_and_roles(dbo)
+    out = []
+    for u in users:
+        # We only need to look up the security flags for non-super users and non-roles
+        securitymap = ""
+        if u.ISROLE == 0 or u.SUPERUSER == 0: 
+            securitymap = get_security_map(dbo, u.USERNAME)
+        if u.ISROLE == 1 or u.SUPERUSER == 1 or has_security_flag(securitymap, VIEW_DIARY):
+            out.append(u)
+    return out
+
 def get_users_and_roles(dbo):
     """
-    Returns a single list of all users and roles together,
-    with one column - USERNAME
+    Returns a single list of all users and roles together, with USERNAME containing the
+    name of both roles and users.
     """
-    return dbo.query("SELECT UserName FROM users " \
-        "UNION SELECT Rolename AS UserName FROM role ORDER BY UserName")
+    return dbo.query("SELECT UserName, 0 AS IsRole, SuperUser FROM users " \
+        "UNION SELECT Rolename AS UserName, 1 AS IsRole, 0 AS SuperUser FROM role ORDER BY UserName")
 
 def get_users(dbo, user='%'):
     """
@@ -446,21 +497,29 @@ def get_users(dbo, user='%'):
         u.ROLES = "|".join(rolenames)
     return users
 
+def get_user(dbo, user):
+    """
+    Returns a single user account by name. Returns None if no user account is found.
+    """
+    for u in dbo.query("SELECT UserName FROM users"):
+        if u.USERNAME.upper() == user.upper():
+            return dbo.first_row( get_users(dbo, u.USERNAME) )
+    return None
+
 def get_active_users(dbo):
     """
     Returns a list of active users on the system
     USERNAME, SINCE, MESSAGES
     """
-    cachekey = "%s_activity" % dbo.database
-    return asm3.utils.nulltostr(asm3.cachemem.get(cachekey))
+    return asm3.utils.nulltostr(asm3.cachemem.get("activity_%s" % dbo.database))
 
-def logout(session, remoteip = ""):
+def logout(session, remoteip = "", useragent = ""):
     """
     Logs the user session out
     """
     try:
         asm3.al.info("%s logged out" % session.user, "users.logout", session.dbo)
-        asm3.audit.logout(session.dbo, session.user, remoteip)
+        asm3.audit.logout(session.dbo, session.user, remoteip, useragent)
         session.user = None
         session.kill()
     except:
@@ -472,8 +531,7 @@ def update_user_activity(dbo, user, timenow = True):
     If timenow is False, removes this user from the active list.
     """
     if dbo is None or user is None: return
-    cachekey = "%s_activity" % dbo.database
-    ac = asm3.utils.nulltostr(asm3.cachemem.get(cachekey))
+    ac = asm3.utils.nulltostr(asm3.cachemem.get("activity_%s" % dbo.database))
     # Prune old activity and remove the current user
     nc = []
     for a in ac.split(","):
@@ -485,7 +543,7 @@ def update_user_activity(dbo, user, timenow = True):
                 # if the last seen value was more than an hour ago, 
                 # don't bother adding that user
                 p = asm3.i18n.parse_date("%Y-%m-%d %H:%M:%S", d)
-                if asm3.i18n.subtract_hours(asm3.i18n.now(dbo.timezone), 1) > p:
+                if asm3.i18n.subtract_hours(dbo.now(), 1) > p:
                     continue
                 # Don't add the current user
                 if u == user:
@@ -495,8 +553,8 @@ def update_user_activity(dbo, user, timenow = True):
             continue
     # Add this user with the new time 
     if timenow: 
-        nc.append("%s=%s" % (user, asm3.i18n.format_date("%Y-%m-%d %H:%M:%S", asm3.i18n.now(dbo.timezone))))
-    asm3.cachemem.put(cachekey, ",".join(nc), 3600 * 8)
+        nc.append("%s=%s" % (user, asm3.i18n.format_date(dbo.now(), "%Y-%m-%d %H:%M:%S")))
+    asm3.cachemem.put("activity_%s" % dbo.database, ",".join(nc), 3600 * 8)
 
 def get_personid(dbo, user):
     """
@@ -527,6 +585,8 @@ def insert_user_from_form(dbo, username, post):
         "RealName":             post["realname"],
         "EmailAddress":         post["email"],
         "Password":             hash_password(post["password"]),
+        "EnableTOTP":           0,
+        "OTPSecret":            asm3.utils.otp_secret(),
         "SuperUser":            post.integer("superuser"),
         "DisableLogin":         post.integer("disablelogin"),
         "RecordVersion":        0,
@@ -543,9 +603,27 @@ def insert_user_from_form(dbo, username, post):
         for rid in roles.split(","):
             if rid.strip() != "":
                 dbo.insert("userrole", { "UserID": nuserid, "RoleID": rid }, generateID=False)
+
+    # If the option was set, email these new credentials to the user
+    # Note: we do not audit the actual email content to prevent plaintext passwords appearing in the audit log
+    if post.boolean("emailcred") and post["email"] != "":
+        fromaddress = asm3.configuration.email(dbo)
+        subject = asm3.i18n._("New user account", l)
+        url = "%s/login" % BASE_URL
+        if asm3.smcom.active(): url = asm3.smcom.get_login_url(dbo)
+        bodynopass = "%s:\n\n%s: {url}\n%s: {user}\n%s: {pass}" % (
+            asm3.i18n._("A new ASM user account has been set up for you", l), 
+            asm3.i18n._("URL", l), asm3.i18n._("Username", l), asm3.i18n._("Password", l) )
+        bodynopass = bodynopass.replace("{url}", url)
+        bodynopass = bodynopass.replace("{user}", post["username"])
+        body = bodynopass.replace("{pass}", post["password"])
+        asm3.utils.send_email(dbo, fromaddress, post["email"], "", "", subject, body, "plain", exceptions=False)
+        if asm3.configuration.audit_on_send_email(dbo): 
+            asm3.audit.email(dbo, username, fromaddress, post["email"], "", "", subject, bodynopass)
+
     return nuserid
 
-def update_user_settings(dbo, username, email = "", realname = "", locale = "", theme = "", signature = ""):
+def update_user_settings(dbo, username, email = "", realname = "", locale = "", theme = "", signature = "", enable_totp = 0):
     """
     Updates the user account settings for email, name, locale, theme and signature
     """
@@ -555,8 +633,15 @@ def update_user_settings(dbo, username, email = "", realname = "", locale = "", 
         "EmailAddress":     email,
         "ThemeOverride":    theme,
         "LocaleOverride":   locale,
+        "EnableTOTP":       enable_totp,
         "Signature":        signature
     }, username, setLastChanged=False)
+
+def update_user_otp_secret(dbo, userid, secret):
+    """
+    Updates the OTP secret for a user account
+    """
+    dbo.update("users", userid, { "OTPSecret": secret })
 
 def update_user_from_form(dbo, username, post):
     """
@@ -568,6 +653,7 @@ def update_user_from_form(dbo, username, post):
     dbo.update("users", userid, {
         "RealName":         post["realname"],
         "EmailAddress":     post["email"],
+        "EnableTOTP":       post.boolean("enabletotp"),
         "SuperUser":        post.integer("superuser"),
         "DisableLogin":     post.integer("disablelogin"),
         "OwnerID":          post.integer("person"),
@@ -623,9 +709,10 @@ def delete_role(dbo, username, rid):
 
 def reset_password(dbo, userid, password):
     """
-    Resets the password for the given user to "password"
+    Resets the password for the given user to "password".
+    Also, clears 2FA from the account.
     """
-    dbo.update("users", userid, { "Password": hash_password(password) })
+    dbo.update("users", userid, { "Password": hash_password(password), "EnableTOTP": 0 })
 
 def update_session(session):
     """
@@ -648,9 +735,9 @@ def update_session(session):
             dbo.query_int("SELECT COUNT(*) FROM animal") > 2000
     session.locale = locale
     session.theme = theme
-    session.config_ts = asm3.i18n.format_date("%Y%m%d%H%M%S", asm3.i18n.now())
+    session.config_ts = asm3.i18n.format_date(asm3.i18n.now(), "%Y%m%d%H%M%S")
 
-def web_login(post, session, remoteip, path):
+def web_login(post, session, remoteip, useragent, path):
     """
     Performs a login and sets up the user's session.
     Returns the username on successful login, or:
@@ -661,7 +748,9 @@ def web_login(post, session, remoteip, path):
     database = post["database"]
     username = post["username"]
     password = post["password"]
+    onetimepass = post["onetimepass"]
     mobileapp = post["mobile"] == "true"
+    rememberme = post["rememberme"] == "on"
     nologconnection = post["nologconnection"] == "true"
     if len(username) > 100:
         username = username[0:100]
@@ -674,19 +763,30 @@ def web_login(post, session, remoteip, path):
     # Connect to the database and authenticate the username and password
     user = authenticate(dbo, username, password)
     if user is not None and not authenticate_ip(user, remoteip):
-        asm3.al.error("user %s with ip %s failed ip restriction check '%s'" % (username, remoteip, user.IPRESTRICTION), "users.web_login", dbo)
+        asm3.al.error("user %s from %s [%s] failed ip restriction check '%s'" % (username, remoteip, useragent, user.IPRESTRICTION), "users.web_login", dbo)
         return "FAIL"
     
+    # Check if this user has been disabled from logging in
     if user is not None and "DISABLELOGIN" in user and user.DISABLELOGIN == 1:
-        asm3.al.error("user %s with ip %s failed as account has logins disabled" % (username, remoteip), "users.web_login", dbo)
+        asm3.al.error("user %s from %s [%s] failed as account has logins disabled" % (username, remoteip, useragent), "users.web_login", dbo)
         return "FAIL"
 
+    # If the user has 2FA enabled, check it
+    if user is not None and "ENABLETOTP" in user and "OTPSECRET" in user and user.ENABLETOTP == 1:
+        if onetimepass == "":
+            asm3.al.debug("user %s has 2FA enabled and no code has been given" % username, "users.web_login", dbo)
+            return "ASK2FA"
+        if onetimepass != str(asm3.utils.totp(user.OTPSECRET)):
+            asm3.al.error("user %s failed OTP check" % username, "users.web_login", dbo)
+            return "BAD2FA"
+
     if user is not None:
-        asm3.al.info("%s successfully authenticated from %s" % (username, remoteip), "users.web_login", dbo)
+        asm3.al.info("%s successfully authenticated from %s [%s]" % (username, remoteip, useragent), "users.web_login", dbo)
 
         try:
             dbo.locked = asm3.configuration.smdb_locked(dbo)
             dbo.timezone = asm3.configuration.timezone(dbo)
+            dbo.timezone_dst = asm3.configuration.timezone_dst(dbo)
             dbo.installpath = path
             session.locale = asm3.configuration.locale(dbo)
             dbo.locale = session.locale
@@ -740,7 +840,7 @@ def web_login(post, session, remoteip, path):
         try:
             # Mark the user logged in
             if not nologconnection: 
-                asm3.audit.login(dbo, username, remoteip)
+                asm3.audit.login(dbo, username, remoteip, useragent)
 
             # Check to see if any updates need performing on this database
             if asm3.dbupdate.check_for_updates(dbo):
@@ -762,8 +862,19 @@ def web_login(post, session, remoteip, path):
         except:
             asm3.al.error("failed updating user activity: %s" % str(sys.exc_info()[0]), "users.web_login", dbo, sys.exc_info())
             return "FAIL"
+
+        try:
+            # Did the user request "remember me"? If so, generate a token
+            # for them and remember the user for 2 weeks
+            if rememberme:
+                token = asm3.utils.uuid_str()
+                asm3.cachemem.put(token, "%s|%s|%s" % (database, username, password), 86400*14)
+                return "%s|%s" % (user.USERNAME, token)
+        except:
+            asm3.al.error("failed getting remember me: %s" % str(sys.exc_info()[0]), "users.web_login", dbo, sys.exc_info())
+
     else:
-        asm3.al.error("database:%s username:%s password:%s failed authentication from %s" % (database, username, password, remoteip), "users.web_login", dbo)
+        asm3.al.error("database:%s username:%s password:%s failed authentication from %s [%s]" % (database, username, password, remoteip, useragent), "users.web_login", dbo)
         return "FAIL"
 
     return user.USERNAME

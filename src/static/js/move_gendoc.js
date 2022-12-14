@@ -1,20 +1,21 @@
-/*jslint browser: true, forin: true, eqeq: true, white: true, sloppy: true, vars: true, nomen: true */
-/*global $, jQuery, _, asm, common, config, controller, dlgfx, format, header, html, validate */
+/*global $, jQuery, _, asm, common, config, controller, dlgfx, format, edit_header, header, html, validate */
 
 $(function() {
 
-    var move_gendoc = {
+    "use strict";
+
+    const move_gendoc = {
 
         render: function() {
             return [
                 html.content_header(_("Generate documentation")),
                 '<div class="ui-state-highlight ui-corner-all" style="margin-top: 5px; padding: 0 .7em;">',
-                '<p class="centered"><span class="ui-icon ui-icon-info" style="float: left; margin-right: .3em;"></span>',
+                '<p class="centered"><span class="ui-icon ui-icon-info"></span>',
                 common.base64_decode(controller.message),
                 '</p>',
                 '</div>',
                 '<div id="templatelist">',
-                controller.templates,
+                edit_header.template_list(controller.templates, controller.linktype, controller.id),
                 '</div>',
                 html.content_footer()
             ].join("\n");

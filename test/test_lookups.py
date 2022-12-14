@@ -1,4 +1,3 @@
-#!/usr/bin/python env
 
 import unittest
 import base
@@ -45,7 +44,7 @@ class TestLookups(unittest.TestCase):
         assert len(asm3.lookups.get_licence_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_log_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_movement_types(base.get_dbo())) > 0
-        assert len(asm3.lookups.get_payment_types(base.get_dbo())) > 0
+        assert len(asm3.lookups.get_payment_methods(base.get_dbo())) > 0
         assert len(asm3.lookups.get_posneg(base.get_dbo())) > 0
         assert len(asm3.lookups.get_sexes(base.get_dbo())) > 0
         assert len(asm3.lookups.get_species(base.get_dbo())) > 0
@@ -54,6 +53,8 @@ class TestLookups(unittest.TestCase):
         assert len(asm3.lookups.get_urgencies(base.get_dbo())) > 0
         assert len(asm3.lookups.get_test_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_test_results(base.get_dbo())) > 0
+        assert len(asm3.lookups.get_transport_statuses(base.get_dbo())) > 0
+        assert len(asm3.lookups.get_transport_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_vaccination_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_voucher_types(base.get_dbo())) > 0
         assert len(asm3.lookups.get_yesno(base.get_dbo())) > 0
